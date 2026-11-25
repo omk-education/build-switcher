@@ -191,6 +191,145 @@ module.exports = function BuildSwitcher(mod) {
     } catch (e) { mod.warn('tera-game-state: contract недоступен — проверка открытых окон отключена.'); }
     function openWindow() { return contract && contract.active ? { type: contract.type } : null; }
 
+    // --- экипировка (tera-game-state inventory)
+    // Слоты снаряжения: 1 оружие, 3 тело, 4 руки, 5 ноги, 6-7 серьги, 8-9 кольца, 10 ожерелье, 11 бельё,
+    // 12 голова (циркулет), 13 лицо (маска), 19 пояс, 20 брошь, 22-23 реликвии. Костюмы (14-18, 21) не трогаем.
+    const GEAR_SLOTS = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 19, 20, 22, 23];
+    const SLOT_NAMES = { 1: 'оружие', 3: 'нагрудник', 4: 'перчатки', 5: 'обувь', 6: 'серьга', 7: 'серьга', 8: 'кольцо', 9: 'кольцо',
+        10: 'ожерелье', 11: 'бельё', 12: 'голова', 13: 'маска', 19: 'пояс', 20: 'брошь', 22: 'реликвия', 23: 'реликвия' };
+    let inventory = null;
+    try {
+        mod.game.initialize('inventory');
+        inventory = mod.game.inventory;
+        inventory.on('update', () => changed());
+    } catch (e) { mod.warn('tera-game-state: inventory недоступен — переключение экипировки отключено.'); }
+
+    function equipKnown() { return !!(inventory && inventory.equipment && inventory.equipment.slots && Object.keys(inventory.equipment.slots).length); }
+    function equipSnapshot() {
+        const out = {};
+        for (const slot of GEAR_SLOTS) {
+            const it = inventory.equipment.slots[slot];
+            if (!it) continue;
+            out[slot] = {
+                id: it.id, dbid: String(it.dbid), passivitySet: it.passivitySet | 0,
+                crystals: (it.crystals || []).filter(Boolean),
+                name: (it.data && it.data.name) || null
+            };
+        }
+        return out;
+    }
+    function equipDiff(saved) {
+        const cur = inventory.equipment.slots;
+        return Object.entries(saved).filter(([slot, it]) => !cur[slot] || cur[slot].dbid === undefined || String(cur[slot].dbid) !== it.dbid).map(([slot]) => +slot);
+    }
+
+    // C_CHANGE_EQUIP_PRESET собираем вручную: JS-определение в tera-data ломается при записи
+    // (обращается к несуществующей переменной). Разметка — из его же функции чтения:
+    // u16 countItems, u16 offItems, u16 countCrystals, u16 offCrystals, u64 gameId,
+    // затем элементы предметов (20 байт) вперемешку с кристаллами своего слота (12 байт), как у клиента.
+    function equipPresetPacket(items, crystals) {
+        const code = opcode('C_CHANGE_EQUIP_PRESET');
+        if (code === undefined) return null;
+        const base = payloadOffset(code);
+        const size = base + 16 + items.length * 20 + crystals.length * 12;
+        const buf = Buffer.alloc(size);
+        buf.writeUInt16LE(size, 0);
+        buf.writeUInt16LE(code, 2);
+        buf.writeUInt16LE(items.length, base);
+        buf.writeUInt16LE(crystals.length, base + 4);
+        buf.writeBigUInt64LE(BigInt(mod.game.me.gameId), base + 8);
+        let pos = base + 16, prevItem = base + 2, prevCrystal = base + 6;
+        for (const it of items) {
+            buf.writeUInt16LE(pos, prevItem);
+            buf.writeUInt16LE(pos, pos);
+            prevItem = pos + 2;
+            buf.writeUInt32LE(it.slot, pos + 4);
+            buf.writeBigUInt64LE(BigInt(it.dbid), pos + 8);
+            buf.writeUInt32LE(it.passivitySet >>> 0, pos + 16);
+            pos += 20;
+            for (const c of crystals.filter(x => x.slot === it.slot)) {
+                buf.writeUInt16LE(pos, prevCrystal);
+                buf.writeUInt16LE(pos, pos);
+                prevCrystal = pos + 2;
+                buf.writeUInt32LE(c.slot, pos + 4);
+                buf.writeUInt32LE(c.id >>> 0, pos + 8);
+                pos += 12;
+            }
+        }
+        return buf;
+    }
+
+    function parseEquipPreset(code, data) {
+        const base = payloadOffset(code);
+        const res = { items: [], crystals: [] };
+        let off = data.readUInt16LE(base + 2), n = data.readUInt16LE(base);
+        while (off && n-- > 0 && off + 20 <= data.length) {
+            res.items.push({ slot: data.readUInt32LE(off + 4), dbid: data.readBigUInt64LE(off + 8).toString(), passivitySet: data.readUInt32LE(off + 16) });
+            off = data.readUInt16LE(off + 2);
+        }
+        off = data.readUInt16LE(base + 6); n = data.readUInt16LE(base + 4);
+        while (off && n-- > 0 && off + 12 <= data.length) {
+            res.crystals.push({ slot: data.readUInt32LE(off + 4), id: data.readUInt32LE(off + 8) });
+            off = data.readUInt16LE(off + 2);
+        }
+        return res;
+    }
+
+    // Если клиент сам отправит набор экипировки — сверяем с нашей сборкой пакета (для отладки)
+    hook('C_CHANGE_EQUIP_PRESET', 'raw', fromClient, (code, data) => {
+        try {
+            const parsed = parseEquipPreset(code, data);
+            const ours = equipPresetPacket(parsed.items, parsed.crystals);
+            const same = ours && ours.slice(payloadOffset(code)).equals(data.slice(payloadOffset(code)));
+            dbg(`C_CHANGE_EQUIP_PRESET (client): ${parsed.items.length} предметов, ${parsed.crystals.length} кристаллов; сборка мода ${same ? 'совпадает' : 'ОТЛИЧАЕТСЯ'}: ${data.toString('hex')}`);
+            if (!same) mod.warn(`C_CHANGE_EQUIP_PRESET от клиента не совпал со сборкой мода: ${data.toString('hex')}`);
+        } catch (e) { dbg(`C_CHANGE_EQUIP_PRESET parse error: ${e.message}`); }
+    });
+
+    async function applyEquip(saved, delay) {
+        if (!equipKnown()) return { text: 'экипировка: состояние неизвестно (откройте инвентарь)', warn: true };
+        const diff = equipDiff(saved);
+        if (!diff.length) return { text: 'экипировка: уже' };
+
+        const missing = diff.filter(slot => !inventory.dbids[saved[slot].dbid] && !Object.values(inventory.dbids).some(x => String(x.dbid) === saved[slot].dbid));
+        const want = {};
+        // Берём всё надетое сейчас (чтобы не снять костюмы и прочее), поверх — сохранённое
+        for (const [slot, it] of Object.entries(inventory.equipment.slots)) {
+            if (!it || it.dbid === undefined) continue;
+            want[slot] = { slot: +slot, dbid: String(it.dbid), passivitySet: it.passivitySet | 0, crystals: (it.crystals || []).filter(Boolean) };
+        }
+        for (const [slot, it] of Object.entries(saved)) {
+            if (missing.includes(+slot)) continue;
+            // предмет мог быть надет в другом слоте (кольца/серьги) — убираем дубль
+            for (const k of Object.keys(want)) if (want[k].dbid === it.dbid && +k !== +slot && !(k in saved)) delete want[k];
+            want[slot] = { slot: +slot, dbid: it.dbid, passivitySet: it.passivitySet | 0, crystals: it.crystals || [] };
+        }
+        const items = Object.values(want).sort((a, b) => a.slot - b.slot);
+        const crystals = [];
+        for (const it of items) for (const id of it.crystals) crystals.push({ slot: it.slot, id });
+        const pkt = equipPresetPacket(items, crystals);
+        if (!pkt) return { text: 'экипировка: пакет C_CHANGE_EQUIP_PRESET неизвестен в этой версии', warn: true };
+
+        const reply = new Promise(resolve => {
+            let done = false;
+            const finish = v => { if (!done) { done = true; inventory.removeListener('update', onUpdate); resolve(v); } };
+            const onUpdate = () => { if (!equipDiff(saved).filter(x => !missing.includes(x)).length) finish(true); };
+            inventory.on('update', onUpdate);
+            mod.setTimeout(() => finish(false), 3000);
+        });
+        mod.toServer(pkt);
+        const ok = await reply;
+        await sleep(delay);
+
+        const left = equipDiff(saved).filter(x => !missing.includes(x));
+        const names = slots => slots.map(sl => saved[sl].name || SLOT_NAMES[sl] || `слот ${sl}`).join(', ');
+        let text;
+        if (!left.length) text = `экипировка: ок (${diff.length - missing.length})`;
+        else text = `экипировка: сервер не надел ${names(left)}${ok ? '' : ' — включите /8 build debug, переоденьтесь вручную и пришлите лог'}`;
+        if (missing.length) text += `; нет в сумке: ${names(missing)}`;
+        return { text, warn: !!(left.length || missing.length) };
+    }
+
     // --- таланты
     const epInfoVersion = mod.majorPatchVersion >= 105 ? 3 : (mod.majorPatchVersion >= 96 ? 2 : 1);
     hook('S_LOAD_EP_INFO', epInfoVersion, watch, e => {
@@ -316,11 +455,21 @@ module.exports = function BuildSwitcher(mod) {
         return b.every(x => s.has(x));
     }
 
+    // Какие части билда переключать: equip — экипировка, talents — таланты, crests — символы (изученные умения),
+    // polish — улучшение умений. Старые билды хранили только useCrests.
+    const PARTS = ['equip', 'talents', 'crests', 'polish'];
+    function partOn(b, part) {
+        if (b.parts && b.parts[part] !== undefined) return !!b.parts[part];
+        if (part === 'crests') return b.useCrests !== false;
+        return true;
+    }
+
     function buildMatches(b) {
-        const res = { crests: null, ep: null, polish: null };
-        if (b.crests && b.useCrests !== false && st.crestsKnown) res.crests = sameSet(enabledCrests(), b.crests);
-        if (b.epPreset !== undefined && b.epPreset !== null && st.epPreset !== null) res.ep = st.epPreset === b.epPreset;
-        if (b.polish && st.polishKnown) res.polish = Object.entries(b.polish).every(([g, id]) => st.polish.get(+g) === id);
+        const res = { equip: null, crests: null, ep: null, polish: null };
+        if (b.equip && partOn(b, 'equip') && equipKnown()) res.equip = equipDiff(b.equip).length === 0;
+        if (b.crests && partOn(b, 'crests') && st.crestsKnown) res.crests = sameSet(enabledCrests(), b.crests);
+        if (b.epPreset !== undefined && b.epPreset !== null && partOn(b, 'talents') && st.epPreset !== null) res.ep = st.epPreset === b.epPreset;
+        if (b.polish && partOn(b, 'polish') && st.polishKnown) res.polish = Object.entries(b.polish).every(([g, id]) => st.polish.get(+g) === id);
         return res;
     }
 
@@ -337,13 +486,16 @@ module.exports = function BuildSwitcher(mod) {
             b.polish = {};
             for (const [group, id] of st.polish) if (id) b.polish[group] = id;
         } else missing.push('улучшение умений');
+        if (equipKnown()) b.equip = equipSnapshot(); else missing.push('экипировка');
 
         const old = c.builds[name];
-        if (old) for (const k of ['useCrests', 'icon', 'color', 'hotkey']) if (old[k] !== undefined) b[k] = old[k];
+        if (old) for (const k of ['icon', 'color', 'hotkey']) if (old[k] !== undefined) b[k] = old[k];
+        b.parts = {};
+        for (const part of PARTS) b.parts[part] = old ? partOn(old, part) : true;
         c.builds[name] = b;
         save();
         changed();
-        msg(`Билд «${name}» сохранён: символов ${b.crests ? b.crests.length : '—'}, страница талантов ${b.epPreset !== undefined ? b.epPreset : '—'}, опций улучшения ${b.polish ? Object.keys(b.polish).length : '—'}.`);
+        msg(`Билд «${name}» сохранён: экипировка ${b.equip ? Object.keys(b.equip).length : '—'}, символов ${b.crests ? b.crests.length : '—'}, страница талантов ${b.epPreset !== undefined ? b.epPreset + 1 : '—'}, опций улучшения ${b.polish ? Object.keys(b.polish).length : '—'}.`);
         if (missing.length)
             msg(`Не сохранено (сервер ещё не прислал данные): ${missing.join(', ')}. Откройте соответствующие окна или перезайдите на персонажа и сохраните снова.`);
         reportUnknownPackets(name, b);
@@ -373,7 +525,7 @@ module.exports = function BuildSwitcher(mod) {
         if (S().blockInCombat && mod.game.me.inCombat) return deny('В бою переключать нельзя.');
         if (mod.game.me.alive === false) return deny('Персонаж мёртв.');
         const win = openWindow();
-        if (win && S().crestsWhenBusy === 'abort' && b.crests && b.useCrests !== false && st.crestsKnown && !sameSet(enabledCrests(), b.crests))
+        if (win && S().crestsWhenBusy === 'abort' && b.crests && partOn(b, 'crests') && st.crestsKnown && !sameSet(enabledCrests(), b.crests))
             return deny('Открыто окно взаимодействия — символы сейчас не сменить. Закройте его и повторите.');
 
         busy = true;
@@ -382,8 +534,11 @@ module.exports = function BuildSwitcher(mod) {
         const report = [];
         let warn = false;
         try {
+            const active = PARTS.filter(p => partOn(b, p));
+            if (!active.length) report.push('в билде не выбрано, что переключать');
+
             // 1. Таланты
-            if (b.epPreset !== undefined && b.epPreset !== null) {
+            if (b.epPreset !== undefined && b.epPreset !== null && partOn(b, 'talents')) {
                 if (st.epPreset === b.epPreset) report.push('таланты: уже');
                 else {
                     const pkt = epPacketFor(b.epPreset);
@@ -399,8 +554,7 @@ module.exports = function BuildSwitcher(mod) {
             }
 
             // 2. Символы (можно отключить для билда: build glyphs <имя> off)
-            if (b.crests && b.useCrests === false) report.push('символы: не трогаю');
-            else if (b.crests) {
+            if (b.crests && partOn(b, 'crests')) {
                 if (!st.crestsKnown) report.push('символы: состояние неизвестно (откройте окно умений)');
                 else if (sameSet(enabledCrests(), b.crests)) report.push('символы: уже');
                 else if (openWindow() && S().crestsWhenBusy === 'skip') {
@@ -442,7 +596,7 @@ module.exports = function BuildSwitcher(mod) {
             }
 
             // 3. Улучшение умений
-            if (b.polish && Object.keys(b.polish).length) {
+            if (b.polish && Object.keys(b.polish).length && partOn(b, 'polish')) {
                 let changed = 0, already = 0;
                 const failed = [];
                 if (!st.polishKnown) {
@@ -476,6 +630,16 @@ module.exports = function BuildSwitcher(mod) {
                     const reply = waitFor('S_RP_SKILL_POLISHING_LIST', 1, 2000);
                     mod.toServer(listPkt);
                     await reply;
+                }
+            }
+
+            // 4. Экипировка (последней: самый тяжёлый шаг)
+            if (b.equip && Object.keys(b.equip).length && partOn(b, 'equip')) {
+                if (!inventory) report.push('экипировка: недоступна');
+                else {
+                    const r = await applyEquip(b.equip, delay);
+                    report.push(r.text);
+                    if (r.warn) warn = true;
                 }
             }
 
@@ -517,14 +681,17 @@ module.exports = function BuildSwitcher(mod) {
                 const m = buildMatches(b);
                 const vals = Object.values(m);
                 const missing = [];
-                if (b.epPreset !== undefined && !epPacketFor(b.epPreset)) missing.push(`страница талантов ${b.epPreset + 1}`);
-                if (b.polish) for (const [g, id] of Object.entries(b.polish)) if (!polishPacketFor(+g, id)) missing.push(`улучшение ${id}`);
+                if (b.epPreset !== undefined && partOn(b, 'talents') && !epPacketFor(b.epPreset)) missing.push(`страница талантов ${b.epPreset + 1}`);
+                if (b.polish && partOn(b, 'polish')) for (const [g, id] of Object.entries(b.polish)) if (!polishPacketFor(+g, id)) missing.push(`улучшение ${id}`);
                 return {
                     name,
                     icon: b.icon || (/tank|танк|def/i.test(name) ? 'shield' : (/dd|дд|dps|дпс|dmg/i.test(name) ? 'sword' : 'star')),
                     color: b.color || '',
                     hotkey: b.hotkey || '',
-                    useCrests: b.useCrests !== false,
+                    useCrests: partOn(b, 'crests'),
+                    parts: Object.fromEntries(PARTS.map(p => [p, partOn(b, p)])),
+                    equip: b.equip ? Object.keys(b.equip).length : null,
+                    equipList: b.equip ? Object.entries(b.equip).map(([slot, it]) => ({ slot: +slot, slotName: SLOT_NAMES[slot] || `слот ${slot}`, name: it.name || `предмет ${it.id}`, equipped: !!(equipKnown() && inventory.equipment.slots[slot] && String(inventory.equipment.slots[slot].dbid) === it.dbid) })) : [],
                     crests: b.crests ? b.crests.length : null,
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
@@ -541,6 +708,7 @@ module.exports = function BuildSwitcher(mod) {
                 inCombat: !!mod.game.me.inCombat,
                 openWindow: win,
                 current: {
+                    equip: equipKnown() ? GEAR_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
                     epPreset: st.epPreset,
                     crests: st.crestsKnown ? enabledCrests().length : null,
                     polish: st.polishKnown ? [...st.polish.values()].filter(Boolean).length : null
@@ -590,7 +758,13 @@ module.exports = function BuildSwitcher(mod) {
         updateBuild(name, patch) {
             const b = getBuild(name);
             if (!b) return;
-            for (const k of ['icon', 'color', 'hotkey', 'useCrests']) if (k in patch) b[k] = patch[k];
+            for (const k of ['icon', 'color', 'hotkey']) if (k in patch) b[k] = patch[k];
+            if ('useCrests' in patch) patch.parts = Object.assign({}, patch.parts, { crests: !!patch.useCrests });
+            if (patch.parts) {
+                if (!b.parts) b.parts = Object.fromEntries(PARTS.map(p => [p, partOn(b, p)]));
+                for (const p of PARTS) if (p in patch.parts) b.parts[p] = !!patch.parts[p];
+                delete b.useCrests;
+            }
             save(); changed();
         },
         forgetLearned() {
@@ -669,7 +843,7 @@ module.exports = function BuildSwitcher(mod) {
     function help() {
         msg('build save <имя> — сохранить текущие символы, таланты и улучшения');
         msg('build <имя> — переключиться (также: ' + S().shortcuts.join(', ') + ')');
-        msg('build list | show <имя> | del <имя> | glyphs <имя> on|off | gui | status | debug | forget | on | off');
+        msg('build list | show <имя> | del <имя> | part <имя> equip|talents|crests|polish on|off | gui | status | debug | forget | on | off');
     }
 
     // ------------------------------------------------------------------ команды
@@ -693,12 +867,21 @@ module.exports = function BuildSwitcher(mod) {
             }
             case 'status': status(); break;
             case 'gui': case 'ui': openGui(); break;
+            case 'part': {
+                // build part <имя> <equip|talents|crests|polish> on|off
+                const b = getBuild(args[0]);
+                const map = { equip: 'equip', экип: 'equip', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
+                const part = map[(args[1] || '').toLowerCase()];
+                if (!b || !part) { msg('Пример: build part tank equip off (части: equip, talents, crests, polish)'); break; }
+                core.updateBuild(args[0], { parts: { [part]: (args[2] || '').toLowerCase() !== 'off' } });
+                msg(`«${args[0]}»: ${part} ${partOn(b, part) ? 'вкл' : 'выкл'}.`);
+                break;
+            }
             case 'glyphs': {
                 const b = getBuild(args[0]);
                 if (!b) { msg('Нет такого билда.'); break; }
-                b.useCrests = (args[1] || '').toLowerCase() !== 'off';
-                save(); changed();
-                msg(`Символы для «${args[0]}» ${b.useCrests ? 'переключаются' : 'не трогаются'}.`);
+                core.updateBuild(args[0], { parts: { crests: (args[1] || '').toLowerCase() !== 'off' } });
+                msg(`Символы для «${args[0]}» ${partOn(b, 'crests') ? 'переключаются' : 'не трогаются'}.`);
                 break;
             }
             case 'debug': toggleDebug(); break;

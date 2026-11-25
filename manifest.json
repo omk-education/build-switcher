@@ -1,14 +1,14 @@
 {
     "files": {
-        "README.md": "542ce64e845d20a1c790aa17b5723a18a638a7bec1fb82821491237d6bf5f400",
-        "index.js": "a7819cd9117f5171a27ef380088780e7cd6646d77b2d7fed08e173427abbcc9a",
-        "lib/gui.js": "291b11d475afde0d5b36613bf1a324f6c858927bbeaa95dc39020600911dbaf8",
-        "module.json": "630ae26f8a21c7cb9f16d70d0caace1f6a8dce42801a2601a1095768b49a4c91",
+        "README.md": "212f149f03c8488d43710852f6803ef64b3c7ee947c65eb7cfbc9eb963b3bed6",
+        "index.js": "e72d23df192ccf3411a0f90a577d23ab894d4f0b923e7e4f1c44cde472cc154b",
+        "lib/gui.js": "9190fd7316bb713d68d796214f981c12b19f479f3809fb8a7277e6ece9bcbede",
+        "module.json": "d6c4baa505b35b2e098dd3387a83ceef6a9a9fe7eef6c58e29da1e676644a9e2",
         "settings_migrator.js": "411fa4a258396a63e6881eae76d2f4b296e04783cdf00ad4c3956cae969841ce",
-        "ui/app.js": "b669a6bffce69fe16f75d540bf213d834e24b56f6572e5094511385221d243c1",
+        "ui/app.js": "6915270c387a845fa5568bcf507f0f57c195025a74f7bc5bd62944bef0725272",
         "ui/icon.png": "153c6b94c62a6de3bd11694f61834e5c937fbfebb45621132679adca35b2f156",
         "ui/icons.js": "d4cfa0f2df2b80fe722ec641ad12add7ac3bc5335576f0f8baa0953c3a7646e5",
-        "ui/index.html": "8b71d6c6fd1f1064598d97623c8a16cc683fc0621e7b932702bc8369d3aa44b9",
-        "ui/style.css": "bd478cff589215692b9f46de335b8ddd01774d7a4af48e2a55e403ce945cee0f"
+        "ui/index.html": "b0ad24883dd2f9f6040e4c036f7094c91e0fb00c58d38ead3cbc4caaed4c03ce",
+        "ui/style.css": "4cea5c1a3cc670538d8db49e0fc57f81483223f7ce498c20d8c3dd11ba50b51d"
     }
 }

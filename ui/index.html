@@ -42,7 +42,7 @@
         <input id="new-name" maxlength="24" placeholder="Имя нового билда (например, pvp)" spellcheck="false">
         <button id="btn-save" class="primary">Сохранить текущее</button>
     </section>
-    <p class="hint">«Сохранить текущее» запоминает символы, страницу талантов и опции «Улучшения умений», которые сейчас включены в игре.</p>
+    <p class="hint">«Сохранить текущее» запоминает надетую экипировку, символы, страницу талантов и опции «Улучшения умений». Что из этого переключать, выбирается в редакторе билда (✎) или нажатием на плашки.</p>
 </main>
 
 <!-- ======================= Настройки ======================= -->
@@ -120,6 +120,9 @@
             <button class="win" id="ed-close" title="Готово"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></button>
         </div>
 
+        <div class="ed-label">Что переключать</div>
+        <div class="parts" id="ed-parts"></div>
+
         <div class="ed-label">Иконка</div>
         <div class="tabs" id="ed-tabs"></div>
         <div class="icon-grid" id="ed-icons"></div>
@@ -136,7 +139,6 @@
         </div>
         <p class="hint" id="ed-hotkey-hint">Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.</p>
 
-        <label class="check"><input type="checkbox" id="ed-crests"> Переключать символы</label>
 
         <div class="ed-actions">
             <button class="small" id="ed-up" title="Выше">↑</button>

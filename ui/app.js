@@ -36,6 +36,9 @@ function el(tag, props, ...children) {
 }
 
 const colorOf = b => b.color || DEFAULT_COLOR[b.icon] || '';
+const PART_LABELS = { equip: 'Экипировка', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
+const partOn = (b, p) => !b.parts || b.parts[p] !== false;
+function togglePart(b, p) { send('update', b.name, { parts: { [p]: !partOn(b, p) } }); }
 const pageText = p => (p === null || p === undefined ? '?' : `стр. ${p + 1}`);
 
 // Кнопка с подтверждением вторым нажатием (если включено в настройках)
@@ -53,11 +56,16 @@ function confirmButton(label, confirmLabel, cls, action) {
 }
 
 // ---------------------------------------------------------------- основной вид
-function chip(text, match, off) {
+function chip(text, match, off, onClick) {
     let cls = 'chip', mark = '';
     if (off) cls += ' off';
     else if (match === true) { cls += ' ok'; mark = ' ✓'; } else if (match === false) { cls += ' bad'; mark = ' ✗'; }
-    return el('span', { class: cls, title: off ? 'Символы этого билда не переключаются' : '' }, text + mark);
+    if (onClick) cls += ' toggle';
+    return el(onClick ? 'button' : 'span', {
+        class: cls,
+        title: onClick ? (off ? 'Не переключается. Нажмите, чтобы включить' : 'Нажмите, чтобы не переключать это') : '',
+        on: onClick ? { click: onClick } : null
+    }, text + mark);
 }
 
 function renderAlerts(s) {
@@ -82,8 +90,8 @@ function renderMain(s) {
     const c = s.current;
     $('now-detail').innerHTML = '';
     $('now-detail').append(
-        el('div', {}, `Таланты: ${pageText(c.epPreset)}`),
-        el('div', {}, `Символы: ${c.crests === null ? '?' : c.crests} · Улучшения: ${c.polish === null ? '?' : c.polish}`));
+        el('div', {}, `Экипировка ${c.equip === null || c.equip === undefined ? '?' : c.equip} · Таланты ${pageText(c.epPreset)}`),
+        el('div', {}, `Символы ${c.crests === null ? '?' : c.crests} · Улучшения ${c.polish === null ? '?' : c.polish}`));
     renderAlerts(s);
 
     const box = $('builds');
@@ -102,9 +110,10 @@ function renderMain(s) {
                     b.active ? el('span', { class: 'tag tag-active' }, 'включён') : null,
                     b.hotkey ? el('span', { class: 'tag tag-key', title: 'Горячая клавиша' }, b.hotkey) : null),
                 el('div', { class: 'chips' },
-                    b.epPreset !== null ? chip(`Таланты ${pageText(b.epPreset)}`, b.match.ep) : null,
-                    b.crests !== null ? chip(`Символы ${b.crests}`, b.match.crests, !b.useCrests) : null,
-                    b.polish !== null ? chip(`Улучшения ${b.polish}`, b.match.polish) : null),
+                    b.equip !== null && b.equip !== undefined ? chip(`Экипировка ${b.equip}`, b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
+                    b.epPreset !== null ? chip(`Таланты ${pageText(b.epPreset)}`, b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
+                    b.crests !== null ? chip(`Символы ${b.crests}`, b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
+                    b.polish !== null ? chip(`Улучшения ${b.polish}`, b.match.polish, !partOn(b, 'polish'), () => togglePart(b, 'polish'))  : null),
                 b.missing.length ? el('div', { class: 'warn', title: 'Один раз переключите это в игре вручную, и мод запомнит' }, `Нужно выучить: ${b.missing.join(', ')}`) : null),
             el('button', { class: 'win edit-btn', title: 'Настроить билд', on: { click: () => openEditor(b.name) } },
                 el('span', { style: 'font-size:15px' }, '✎'))
@@ -175,7 +184,7 @@ function renderEditor() {
     $('ed-hotkey-hint').textContent = !state.hotkeysAvailable
         ? 'Горячие клавиши работают только в TeraToolbox.exe (с интерфейсом).'
         : (!state.options.hotkeysEnabled ? 'Горячие клавиши выключены в настройках.' : 'Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.');
-    $('ed-crests').checked = b.useCrests;
+    renderParts(b);
 
     const actions = $('ed-overwrite').parentNode;
     const oldOw = $('ed-overwrite'), oldDel = $('ed-delete');
@@ -239,7 +248,36 @@ document.addEventListener('drop', e => e.preventDefault());
 $('ed-close').addEventListener('click', closeEditor);
 $('editor').addEventListener('click', e => { if (e.target === $('editor')) closeEditor(); });
 $('ed-name').addEventListener('keydown', e => { if (e.key === 'Enter') closeEditor(); if (e.key === 'Escape') { $('ed-name').value = editing; closeEditor(); } });
-$('ed-crests').addEventListener('change', e => editing && send('update', editing, { useCrests: e.target.checked }));
+let equipListOpen = false;
+function renderParts(b) {
+    const box = $('ed-parts');
+    box.textContent = '';
+    const info = {
+        equip: b.equip ? `${b.equip} предм.` : 'не сохранена',
+        talents: b.epPreset !== null ? pageText(b.epPreset) : 'не сохранены',
+        crests: b.crests !== null ? `${b.crests} шт.` : 'не сохранены',
+        polish: b.polish !== null ? `${b.polish} опц.` : 'не сохранены'
+    };
+    const matchKey = { equip: 'equip', talents: 'ep', crests: 'crests', polish: 'polish' };
+    for (const p of ['equip', 'talents', 'crests', 'polish']) {
+        const input = el('input', { type: 'checkbox', checked: partOn(b, p), on: { change: () => togglePart(b, p) } });
+        const m = b.match[matchKey[p]];
+        const row = el('div', { class: 'part-row' },
+            el('label', { class: 'switch' }, input, el('i')),
+            el('span', { class: 'part-name' }, PART_LABELS[p]),
+            el('span', { class: `part-info${m === true ? ' ok' : m === false ? ' bad' : ''}` }, info[p] + (m === true ? ' ✓' : m === false ? ' ✗' : '')));
+        if (p === 'equip' && b.equipList && b.equipList.length) {
+            row.append(el('button', { class: 'link', on: { click: () => { equipListOpen = !equipListOpen; renderParts(b); } } }, equipListOpen ? 'скрыть' : 'список'));
+        }
+        box.append(row);
+        if (p === 'equip' && equipListOpen && b.equipList) {
+            box.append(el('div', { class: 'equip-list' }, b.equipList.map(it =>
+                el('div', { class: `equip-item${it.equipped ? ' on' : ''}`, title: it.equipped ? 'Надет сейчас' : 'Сейчас не надет' },
+                    el('span', { class: 'slot' }, it.slotName), el('span', { class: 'iname' }, it.name), el('span', { class: 'mark' }, it.equipped ? '✓' : '')))));
+        }
+    }
+    box.append(el('p', { class: 'hint' }, 'Выключенное мод не трогает при переключении: например, только таланты и улучшения, а экипировку и символы вы меняете сами. Плашки на карточке билда тоже переключаются нажатием.'));
+}
 $('ed-up').addEventListener('click', () => editing && send('move', editing, -1));
 $('ed-down').addEventListener('click', () => editing && send('move', editing, 1));
 $('ed-hotkey-clear').addEventListener('click', () => editing && send('update', editing, { hotkey: '' }));
