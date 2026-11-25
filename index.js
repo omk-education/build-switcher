@@ -433,6 +433,49 @@ module.exports = function BuildSwitcher(mod) {
         }, 2500);
     });
 
+    // --- наборы карт: переключаем номер набора, состав наборов не трогаем
+    // S_CARD_DATA (при входе): refArray cards, refArray presets, uint32, refString name, uint64 gameId,
+    //   uint32 numPresets, uint32 currentPreset — то есть gameId по смещению 14, текущий набор по смещению 26.
+    // S_CHANGE_CARD_PRESET / C_CHANGE_CARD_PRESET: uint32 номер набора (с нуля).
+    let cardPreset = null, cardPresets = null;
+    hook('S_CARD_DATA', 'raw', watch, (code, data) => {
+        const off = payloadOffset(code);
+        if (data.length < off + 30) return;
+        if (!mod.game.me.is(data.readBigUInt64LE(off + 14))) return; // карты другого игрока
+        cardPresets = data.readUInt32LE(off + 22);
+        cardPreset = data.readUInt32LE(off + 26);
+        changed();
+    });
+    hook('S_CHANGE_CARD_PRESET', 'raw', watch, (code, data) => {
+        const off = payloadOffset(code);
+        if (data.length < off + 4) return;
+        cardPreset = data.readUInt32LE(off);
+        changed();
+    });
+    mod.game.on('leave_game', () => { cardPreset = null; cardPresets = null; });
+
+    function cardPresetPacket(preset) {
+        const code = opcode('C_CHANGE_CARD_PRESET');
+        if (code === undefined) return null;
+        const off = payloadOffset(code);
+        const buf = Buffer.alloc(off + 4);
+        buf.writeUInt16LE(buf.length, 0);
+        buf.writeUInt16LE(code, 2);
+        buf.writeUInt32LE(preset >>> 0, off);
+        return buf;
+    }
+
+    async function applyCards(preset) {
+        if (cardPreset === preset) return { text: T('карты: уже'), warn: false };
+        const pkt = cardPresetPacket(preset);
+        if (!pkt) return { text: T('карты: пакет C_CHANGE_CARD_PRESET неизвестен в этой версии'), warn: true };
+        const reply = waitFor('S_CHANGE_CARD_PRESET', 'raw', 2500, d => d.length >= 8 && d.readUInt32LE(d.length - 4) === preset);
+        mod.toServer(pkt);
+        const ok = await reply;
+        if (ok) { cardPreset = preset; return { text: T('карты: ок'), warn: false }; }
+        return { text: T('карты: сервер не подтвердил набор {n}', { n: preset + 1 }), warn: true };
+    }
+
     // --- таланты
     const epInfoVersion = mod.majorPatchVersion >= 105 ? 3 : (mod.majorPatchVersion >= 96 ? 2 : 1);
     hook('S_LOAD_EP_INFO', epInfoVersion, watch, e => {
@@ -560,7 +603,7 @@ module.exports = function BuildSwitcher(mod) {
 
     // Какие части билда переключать: equip — экипировка, talents — таланты, crests — символы (изученные умения),
     // polish — улучшение умений. Старые билды хранили только useCrests.
-    const PARTS = ['equip', 'costume', 'servant', 'talents', 'crests', 'polish'];
+    const PARTS = ['equip', 'costume', 'servant', 'cards', 'talents', 'crests', 'polish'];
     function partOn(b, part) {
         if (b.parts && b.parts[part] !== undefined) return !!b.parts[part];
         if (part === 'crests') return b.useCrests !== false;
@@ -568,10 +611,11 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     function buildMatches(b) {
-        const res = { equip: null, costume: null, servant: null, crests: null, ep: null, polish: null };
+        const res = { equip: null, costume: null, servant: null, cards: null, crests: null, ep: null, polish: null };
         if (b.equip && partOn(b, 'equip') && equipKnown()) res.equip = equipDiff(b.equip).length === 0;
         if (b.costume && Object.keys(b.costume).length && partOn(b, 'costume') && equipKnown()) res.costume = equipDiff(b.costume).length === 0;
         if (b.servants && b.servants.length && partOn(b, 'servant')) res.servant = b.servants.every(sv => servantOut(sv.dbid));
+        if (b.cardPreset !== undefined && b.cardPreset !== null && partOn(b, 'cards') && cardPreset !== null) res.cards = cardPreset === b.cardPreset;
         if (b.crests && partOn(b, 'crests') && st.crestsKnown) res.crests = sameSet(enabledCrests(), b.crests);
         if (b.epPreset !== undefined && b.epPreset !== null && partOn(b, 'talents') && st.epPreset !== null) res.ep = st.epPreset === b.epPreset;
         if (b.polish && partOn(b, 'polish') && st.polishKnown) res.polish = Object.entries(b.polish).every(([g, id]) => st.polish.get(+g) === id);
@@ -593,6 +637,7 @@ module.exports = function BuildSwitcher(mod) {
         } else missing.push(T('улучшение умений'));
         if (equipKnown()) { b.equip = equipSnapshot(GEAR_SLOTS); b.costume = equipSnapshot(COSTUME_SLOTS); } else missing.push(T('экипировка'));
         b.servants = servantSaved();
+        if (cardPreset !== null) b.cardPreset = cardPreset; else missing.push(T('карты'));
 
         const old = c.builds[name];
         if (old) for (const k of ['icon', 'color', 'hotkey', 'showOnBar']) if (old[k] !== undefined) b[k] = old[k];
@@ -752,7 +797,15 @@ module.exports = function BuildSwitcher(mod) {
                 }
             }
 
-            // 5. Помощник
+            // 5. Набор карт
+            if (b.cardPreset !== undefined && b.cardPreset !== null && partOn(b, 'cards')) {
+                const r = await applyCards(b.cardPreset);
+                report.push(r.text);
+                if (r.warn) warn = true;
+                await sleep(delay);
+            }
+
+            // 6. Помощник
             if (b.servants && b.servants.length && partOn(b, 'servant')) {
                 const r = await applyServants(b.servants, delay);
                 report.push(r.text);
@@ -816,6 +869,7 @@ module.exports = function BuildSwitcher(mod) {
                     costumeList: itemList(b.costume),
                     servants: b.servants ? b.servants.map(sv => ({ name: sv.name || T('помощник {id}', { id: sv.id }), type: sv.type, out: servantOut(sv.dbid) })) : null,
                     showOnBar: b.showOnBar !== false,
+                    cardPreset: b.cardPreset !== undefined ? b.cardPreset : null,
                     crests: b.crests ? b.crests.length : null,
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
@@ -835,6 +889,7 @@ module.exports = function BuildSwitcher(mod) {
                     equip: equipKnown() ? GEAR_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
                     costume: equipKnown() ? COSTUME_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
                     servants: [...servants.values()].map(x => x.name || x.id),
+                    cardPreset,
                     epPreset: st.epPreset,
                     crests: st.crestsKnown ? enabledCrests().length : null,
                     polish: st.polishKnown ? [...st.polish.values()].filter(Boolean).length : null
@@ -969,7 +1024,7 @@ module.exports = function BuildSwitcher(mod) {
     function help() {
         msg(T('build save <имя> — сохранить текущие экипировку, символы, таланты и улучшения'));
         msg(T('build <имя> — переключиться (также: {list})', { list: S().shortcuts.join(', ') }));
-        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|servant|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off'));
+        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|servant|cards|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off'));
     }
 
     // ------------------------------------------------------------------ команды
@@ -1006,9 +1061,9 @@ module.exports = function BuildSwitcher(mod) {
             case 'part': {
                 // build part <имя> <equip|talents|crests|polish> on|off
                 const b = getBuild(args[0]);
-                const map = { equip: 'equip', экип: 'equip', costume: 'costume', костюмы: 'costume', servant: 'servant', pet: 'servant', помощник: 'servant', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
+                const map = { equip: 'equip', экип: 'equip', costume: 'costume', костюмы: 'costume', servant: 'servant', pet: 'servant', помощник: 'servant', cards: 'cards', карты: 'cards', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
                 const part = map[(args[1] || '').toLowerCase()];
-                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, costume, servant, talents, crests, polish)')); break; }
+                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, costume, servant, cards, talents, crests, polish)')); break; }
                 core.updateBuild(args[0], { parts: { [part]: (args[2] || '').toLowerCase() !== 'off' } });
                 msg(T('«{name}»: {part} {state}.', { name: args[0], part, state: T(partOn(b, part) ? 'вкл' : 'выкл') }));
                 break;

@@ -10,6 +10,7 @@ A mod for [TERA Toolbox](https://github.com/tera-private-toolbox/tera-toolbox) (
 | Talents (page 1–5) | `C_LOAD_EP_PAGE`. The mod learns this packet when you switch the page yourself in the talent window. |
 | Equipment (weapon, armor, accessories, belt, brooch) | The mod remembers your equipped items and puts them on with a single `C_CHANGE_EQUIP_PRESET` packet, like an equipment preset in the client. If an item is not in your bag (e.g. it is in the bank), the mod tells you. |
 | Costumes (head, face, weapon skin, costume, back, footprints) | A separate build part, applied with the same packet. Switch them together with equipment or on their own. |
+| Card preset | The mod remembers the number of the active card preset and switches the preset itself (`C_CHANGE_CARD_PRESET`), like the preset buttons in the card window. Cards inside presets are not changed. |
 | Servant (pet or partner) | The mod remembers the summoned servant and summons it with `C_REQUEST_SPAWN_SERVANT` if it is not out. The servant of the last applied build is also summoned when you enter the game. |
 | Skill advancement (options 1/2/3) | `C_RQ_SKILL_POLISHING_CHANGE_OPTION`. The mod learns this packet when you select an option yourself. |
 
@@ -75,16 +76,16 @@ You can also do all of this in the mod window: set things up in game, type a nam
 | `/8 build lock` | lock or unlock the button bar |
 | `/8 build gui` | open the manager window |
 | `/8 build lang ru` / `en` | interface and message language |
-| `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `costume`, `servant`, `talents`, `crests`, `polish` |
+| `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `costume`, `servant`, `cards`, `talents`, `crests`, `polish` |
 | `/8 build debug` | toggle packet logging (chat and Toolbox log) |
 | `/8 build forget` | forget learned packets |
 | `/8 build on` / `off` | enable / disable the mod |
 
 ## What to switch (build parts)
 
-Each build has six parts: **Equipment**, **Costumes**, **Servant**, **Talents**, **Glyphs** and **Advancements** (skill advancement). Any of them can be disabled, and the mod will leave it alone:
+Each build has seven parts: **Equipment**, **Costumes**, **Servant**, **Cards** (card preset number), **Talents**, **Glyphs** and **Advancements** (skill advancement). Any of them can be disabled, and the mod will leave it alone:
 - in the window: build editor (✎) → "What to switch", or simply click a chip on the build card (struck through means disabled);
-- in chat: `/8 build part tank equip off` (parts: `equip`, `costume`, `servant`, `talents`, `crests`, `polish`; `on` or `off`).
+- in chat: `/8 build part tank equip off` (parts: `equip`, `costume`, `servant`, `cards`, `talents`, `crests`, `polish`; `on` or `off`).
 
 Example: you change gear and glyphs yourself, and the mod only switches talents and advancements.
 

@@ -13,8 +13,8 @@ const CUSTOM_TAB = 'Свои';
 let iconTab = ICON_GROUPS[0].name;
 let lastToastTime = 0, toastTimer = null;
 
-const PART_LABELS = { equip: 'Экипировка', costume: 'Костюмы', servant: 'Помощник', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
-const PART_ORDER = ['equip', 'costume', 'servant', 'talents', 'crests', 'polish'];
+const PART_LABELS = { equip: 'Экипировка', costume: 'Костюмы', servant: 'Помощник', cards: 'Карты', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
+const PART_ORDER = ['equip', 'costume', 'servant', 'cards', 'talents', 'crests', 'polish'];
 const SERVANT_TYPES = { 0: 'питомец', 1: 'партнёр' };
 const partOn = (b, p) => !b.parts || b.parts[p] !== false;
 function togglePart(b, p) { send('update', b.name, { parts: { [p]: !partOn(b, p) } }); }
@@ -70,6 +70,7 @@ function renderMain(s) {
     $('now-detail').innerHTML = '';
     $('now-detail').append(
         el('div', {}, tr('Экипировка {equip} · Таланты {page}', { equip: c.equip === null || c.equip === undefined ? '?' : c.equip, page: pageText(c.epPreset) })),
+        el('div', {}, tr('Карты: {cards}', { cards: c.cardPreset === null || c.cardPreset === undefined ? '?' : tr('набор {n}', { n: c.cardPreset + 1 }) })),
         el('div', {}, tr('Символы {crests} · Улучшения {polish}', { crests: c.crests === null ? '?' : c.crests, polish: c.polish === null ? '?' : c.polish })));
     renderAlerts(s);
 
@@ -92,6 +93,7 @@ function renderMain(s) {
                 el('div', { class: 'chips' },
                     b.equip !== null && b.equip !== undefined ? chip(tr('Экипировка {n}', { n: b.equip }), b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
                     b.costume ? chip(tr('Костюмы {n}', { n: b.costume }), b.match.costume, !partOn(b, 'costume'), () => togglePart(b, 'costume')) : null,
+                    b.cardPreset !== null && b.cardPreset !== undefined ? chip(tr('Карты: набор {n}', { n: b.cardPreset + 1 }), b.match.cards, !partOn(b, 'cards'), () => togglePart(b, 'cards')) : null,
                     b.servants && b.servants.length ? chip(tr('Помощник: {name}', { name: b.servants.map(x => x.name).join(', ') }), b.match.servant, !partOn(b, 'servant'), () => togglePart(b, 'servant')) : null,
                     b.epPreset !== null ? chip(tr('Таланты {page}', { page: pageText(b.epPreset) }), b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
                     b.crests !== null ? chip(tr('Символы {n}', { n: b.crests }), b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
@@ -236,12 +238,13 @@ function renderParts(b) {
     const info = {
         equip: b.equip ? tr('{n} предм.', { n: b.equip }) : tr('не сохранена'),
         costume: b.costume ? tr('{n} предм.', { n: b.costume }) : tr('не сохранены'),
+        cards: b.cardPreset !== null && b.cardPreset !== undefined ? tr('набор {n}', { n: b.cardPreset + 1 }) : tr('не сохранены'),
         servant: b.servants && b.servants.length ? b.servants.map(x => x.name).join(', ') : tr('не был вызван при сохранении'),
         talents: b.epPreset !== null ? pageText(b.epPreset) : tr('не сохранены'),
         crests: b.crests !== null ? tr('{n} шт.', { n: b.crests }) : tr('не сохранены'),
         polish: b.polish !== null ? tr('{n} опц.', { n: b.polish }) : tr('не сохранены')
     };
-    const matchKey = { equip: 'equip', costume: 'costume', servant: 'servant', talents: 'ep', crests: 'crests', polish: 'polish' };
+    const matchKey = { equip: 'equip', costume: 'costume', servant: 'servant', cards: 'cards', talents: 'ep', crests: 'crests', polish: 'polish' };
     const lists = {
         equip: b.equipList, costume: b.costumeList,
         servant: (b.servants || []).map(x => ({ slotName: tr(SERVANT_TYPES[x.type] || 'помощник'), name: x.name, equipped: x.out }))
