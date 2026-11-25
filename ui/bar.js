@@ -16,6 +16,11 @@ function render(s) {
     installCustomIcons(s.customIcons);
     document.body.classList.toggle('transparent', !!o.transparentBg);
     document.body.classList.toggle('busy', s.busy);
+    // Замок: закрытая дужка — панель закреплена
+    document.body.classList.toggle('locked', !!o.barLocked);
+    $('b-lock').classList.toggle('on', !!o.barLocked);
+    $('b-lock').title = tr(o.barLocked ? 'Панель закреплена — нажмите, чтобы открепить' : 'Закрепить панель');
+    $('b-lock-arc').setAttribute('d', o.barLocked ? 'M8 11V7a4 4 0 0 1 8 0v4' : 'M8 11V7a4 4 0 0 1 8 0');
 
     const box = $('bar');
     box.textContent = '';
@@ -63,7 +68,7 @@ function fit() {
 // Позицию считает мод по реальному курсору; сдвиг меньше 5 px — обычное нажатие.
 let drag = null, swallowClick = false;
 document.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.target.closest('.bar-tools')) return;
+    if (e.button !== 0 || e.target.closest('.bar-tools') || (state && state.options.barLocked)) return;
     drag = { x: e.screenX, y: e.screenY, moving: false, id: e.pointerId };
 });
 document.addEventListener('pointermove', e => {
@@ -95,5 +100,6 @@ document.addEventListener('click', e => { if (swallowClick) { e.stopPropagation(
 
 handlers.state = render;
 $('b-manager').addEventListener('click', () => send('openManager'));
+$('b-lock').addEventListener('click', () => send('toggleLock'));
 $('b-close').addEventListener('click', () => send('close'));
 send('ready');

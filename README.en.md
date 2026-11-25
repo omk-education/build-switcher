@@ -71,6 +71,7 @@ You can also do all of this in the mod window: set things up in game, type a nam
 | `/8 build status` | current state and learned packets |
 | `/8 build del <name>` | delete a build |
 | `/8 build bar` | show or hide the button bar |
+| `/8 build lock` | lock or unlock the button bar |
 | `/8 build gui` | open the manager window |
 | `/8 build lang ru` / `en` | interface and message language |
 | `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `costume`, `talents`, `crests`, `polish` |
@@ -96,7 +97,8 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 - Clicking a button switches to that build. The active build is highlighted in gold. The button tooltip shows its hotkey.
 - By default the bar does not take focus from the game, so you can keep playing right after clicking.
 - Dragging: press the mouse button anywhere on the bar (even on a build button) and move. A move shorter than 5 pixels counts as a normal click. The position is remembered.
-- On hover, ⚙ (manager window) and × (hide the bar) appear.
+- To avoid moving the bar by accident, lock it: the lock on the bar, ⚙ → "Lock the bar" or `/8 build lock`. A locked bar does not move, while its buttons work as usual.
+- On hover, 🔒 (lock or unlock), ⚙ (manager window) and × (hide the bar) appear.
 - The bar fits itself to the number and size of buttons.
 - In settings you can remove the button background or pick its color (palette or custom) and opacity, remove the border and labels, make the bar transparent (only the buttons are visible over the game), pick the size and layout (row or column) and the idle opacity.
 
@@ -118,7 +120,7 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 
 | Section | What you can change |
 |---|---|
-| Button bar | show on login, always on top, keep the game focused, button size, button background (on/off, color, opacity), button border, labels, transparent bar, row or column, opacity and idle opacity |
+| Button bar | show on login, always on top, keep the game focused, lock the bar, button size, button background (on/off, color, opacity), button border, labels, transparent bar, row or column, opacity and idle opacity |
 | Manager window | open on login, always on top, scale, theme (TERA, Graphite, Crimson, Emerald, Light), language |
 | Switching | no switching in combat, behavior while an interaction window is open, delay between packets, hotkeys |
 | Notifications | how long to show results, also post to chat, confirm delete and overwrite |

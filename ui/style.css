@@ -235,6 +235,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 body.bar-page:hover .bar-tools { opacity: 1; }
 .bar-tools .win { width: 22px; height: 20px; }
 .bar-tools .win svg { width: 12px; height: 12px; }
+.bar-tools .win.on { color: var(--gold); }
 
 body.busy .big { cursor: progress; }
 @keyframes pulse { 50% { opacity: .45; } }

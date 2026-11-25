@@ -260,6 +260,12 @@ DICT.en = {
 
     // ---------------------------------------------------------------- 4.0: панель, костюмы, роль в подборе
     'build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | gui | bar | lang ru|en | status | debug | forget | on | off': 'build list | show <name> | del <name> | part <name> equip|costume|talents|crests|polish on|off | gui | bar | lang ru|en | status | debug | forget | on | off',
+    'Панель кнопок закреплена: перетаскивание отключено.': 'Button bar locked: dragging is disabled.',
+    'Панель кнопок откреплена: её можно перетаскивать.': 'Button bar unlocked: you can drag it.',
+    'build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off': 'build list | show <name> | del <name> | part <name> equip|costume|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off',
+    'Закрепить панель': 'Lock the bar',
+    'Панель закреплена — нажмите, чтобы открепить': 'The bar is locked: click to unlock',
+    'Панель нельзя сдвинуть мышью. Также: замок на панели или /8 build lock': 'The bar cannot be moved with the mouse. Also: the lock on the bar or /8 build lock',
     'Цвет фона кнопок': 'Button background color', 'Радуга — цвет темы': 'Rainbow means the theme color', 'По теме': 'Theme color', 'Свой цвет': 'Custom color',
     'Непрозрачность фона кнопок': 'Button background opacity', 'Рамка кнопок': 'Button border',
     '{part}: ок ({n})': '{part}: ok ({n})',

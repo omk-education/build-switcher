@@ -874,7 +874,7 @@ module.exports = function BuildSwitcher(mod) {
     function help() {
         msg(T('build save <имя> — сохранить текущие экипировку, символы, таланты и улучшения'));
         msg(T('build <имя> — переключиться (также: {list})', { list: S().shortcuts.join(', ') }));
-        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | gui | bar | lang ru|en | status | debug | forget | on | off'));
+        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off'));
     }
 
     // ------------------------------------------------------------------ команды
@@ -899,6 +899,7 @@ module.exports = function BuildSwitcher(mod) {
             case 'status': status(); break;
             case 'gui': case 'ui': openGui(); break;
             case 'bar': case 'панель': gui.toggleBar(); break;
+            case 'lock': case 'закрепить': msg(T(gui.toggleLock() ? 'Панель кнопок закреплена: перетаскивание отключено.' : 'Панель кнопок откреплена: её можно перетаскивать.')); break;
             case 'lang': case 'language': case 'язык': {
                 const lang = (args[0] || '').toLowerCase();
                 if (!I18N.LANGUAGES[lang]) { msg(T('Пример: build lang en (языки: {list})', { list: Object.keys(I18N.LANGUAGES).join(', ') })); break; }
