@@ -2,7 +2,7 @@
     "name": "build-switcher",
     "author": "omk-education",
     "description": "Переключение билдов танк / ДД одной кнопкой: символы, страница талантов и опции «Улучшения умений». Окно с кнопками и горячими клавишами.",
-    "version": "4.5.0",
+    "version": "4.5.1",
     "servers": ["https://raw.githubusercontent.com/omk-education/build-switcher/main/"],
     "supportUrl": "https://github.com/omk-education/build-switcher/issues",
     "disableAutoUpdate": false,

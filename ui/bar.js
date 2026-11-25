@@ -48,7 +48,8 @@ function render(s) {
         box.append(el('button', {
             class: `cbtn${b.active ? ' active' : ''}${blocked ? ' blocked' : ''}${b.unsaved ? ' unsaved' : ''}`,
             title: title.join(' · '),
-            on: { click: () => !blocked && send('apply', b.name) }
+            // Решение «можно ли» принимает мод: панель могла не получить свежее состояние (например, конец боя)
+            on: { click: () => send('apply', b.name) }
         },
         el('div', { class: 'big', style: colorOf(b) ? `color:${colorOf(b)}` : null }, iconEl(b.icon)),
         o.labels ? el('span', {}, b.name) : null));
@@ -74,6 +75,8 @@ document.addEventListener('pointerdown', e => {
 });
 document.addEventListener('pointermove', e => {
     if (!drag) return;
+    // Кнопку мыши отпустили вне окна и pointerup не пришёл — заканчиваем перетаскивание
+    if (!e.buttons) { endDrag(); return; }
     if (!drag.moving) {
         if (Math.hypot(e.screenX - drag.x, e.screenY - drag.y) < 5) return;
         drag.moving = true;
@@ -96,6 +99,7 @@ function endDrag() {
 }
 document.addEventListener('pointerup', endDrag);
 document.addEventListener('pointercancel', endDrag);
+window.addEventListener('blur', endDrag);
 // После перетаскивания не включаем билд, на котором отпустили кнопку
 document.addEventListener('click', e => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); swallowClick = false; } }, true);
 

@@ -37,7 +37,7 @@ module.exports = function BuildSwitcher(mod) {
         polishGroupOf: new Map(), // id опции -> группа
         polishKnown: false
     };
-    let busy = false;
+    let busy = false, busySince = 0;
     let debug = false;
     let sniffHook = null;
     let pendingEp = null;     // пакет C_LOAD_EP_PAGE от клиента, ждём ответа сервера
@@ -165,6 +165,8 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     mod.game.on('leave_game', () => { resetState(); changed(); });
+    // Бой, смерть, воскрешение меняют доступность кнопок — обновляем окна
+    if (typeof mod.game.me.on === 'function') for (const ev of ['enter_combat', 'leave_combat', 'die', 'resurrect']) mod.game.me.on(ev, () => changed());
     mod.game.on('enter_game', () => changed());
 
     // --- символы
@@ -712,9 +714,12 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     async function applyBuild(name, source = 'chat') {
-        const say = text => { if (source === 'chat' || S().chatReports || (source === 'hotkey' && !gui.isOpen())) msg(text); };
+        // Окна управления может не быть на экране: тогда отказ с панели или клавиши пишем в чат
+        const say = text => { if (source === 'chat' || S().chatReports || ((source === 'hotkey' || source === 'bar') && !gui.managerOpen())) msg(text); };
         const deny = text => { say(text); setReport(text, 'error'); };
         if (!S().enabled) return deny(T('Мод выключен (build on).'));
+        // Страховка: если прошлое переключение по какой-то причине не завершилось, через минуту снимаем блокировку
+        if (busy && Date.now() - busySince > 60000) { mod.warn(`busy flag was stuck for ${Date.now() - busySince} ms, reset`); busy = false; }
         if (busy) return deny(T('Подождите, переключение уже идёт.'));
         const b = getBuild(name);
         if (!b) return deny(T('Билд «{name}» не найден. Сохраните: build save {name}', { name }));
@@ -726,6 +731,7 @@ module.exports = function BuildSwitcher(mod) {
             return deny(T('Открыто окно взаимодействия — символы сейчас не сменить. Закройте его и повторите.'));
 
         busy = true;
+        busySince = Date.now();
         changed();
         const delay = Math.max(200, S().delay | 0);
         const report = [];
