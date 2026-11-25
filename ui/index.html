@@ -65,7 +65,9 @@
     <section class="group">
         <h3>Компактный режим</h3>
         <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
+        <div class="row" data-key="gui.buttonBg" data-type="bool"><span>Фон кнопок<small>Плитка под иконкой. Без неё остаются только иконки</small></span></div>
         <div class="row" data-key="gui.labels" data-type="bool"><span>Подписи под кнопками</span></div>
+        <div class="row" data-key="gui.transparentBg" data-type="bool"><span>Прозрачное окно<small>Над игрой видны только кнопки. Окно перезапустится</small></span></div>
         <div class="row" data-key="gui.layout" data-type="seg" data-options="row:В строку|column:В столбец"><span>Расположение</span></div>
         <div class="row" data-key="gui.autoHideBar" data-type="bool"><span>Прятать заголовок<small>Кнопки управления появятся при наведении</small></span></div>
     </section>
@@ -121,6 +123,8 @@
         <div class="ed-label">Иконка</div>
         <div class="tabs" id="ed-tabs"></div>
         <div class="icon-grid" id="ed-icons"></div>
+        <div id="ed-custom" class="custom-tools hidden"></div>
+        <input type="file" id="svg-file" accept=".svg,image/svg+xml" multiple class="hidden">
 
         <div class="ed-label">Цвет</div>
         <div class="swatches" id="ed-colors"></div>

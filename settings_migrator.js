@@ -34,6 +34,8 @@ const DefaultSettings = {
         labels: true,         // подписи под кнопками в компактном режиме
         layout: 'row',        // компактный режим: 'row' — в строку, 'column' — в столбец
         autoHideBar: true,    // компактный режим: заголовок только при наведении
+        buttonBg: true,       // компактный режим: фон (плитка) под иконками кнопок
+        transparentBg: false, // компактный режим: прозрачное окно — над игрой видны только кнопки
         theme: 'tera',        // tera | graphite | crimson | emerald | light
         toastSeconds: 8,      // сколько секунд показывать результат (0 — не скрывать)
         confirmDelete: true,  // подтверждать удаление и перезапись
@@ -49,6 +51,9 @@ const DefaultSettings = {
         polishTemplate: null, // { off, hex, idOff, groupOff, group }
         polishListRequest: null // { off, hex } — запрос списка улучшений
     },
+
+    // Свои иконки: id -> { name, svg, tint } (tint — перекрашивать в цвет билда)
+    customIcons: {},
 
     // Сохранённые билды по персонажам
     characters: {}

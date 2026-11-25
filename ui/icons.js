@@ -85,6 +85,154 @@ function installIcons() {
     document.body.prepend(sprite);
 }
 
+// ---------------------------------------------------------------- свои SVG
+// Белый список элементов и атрибутов. Всё остальное (скрипты, обработчики событий, внешние ссылки,
+// встроенные картинки, анимации) выбрасывается: окно мода имеет доступ к Node.js.
+const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon', 'defs',
+    'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'use', 'text', 'tspan', 'title']);
+const SVG_ATTRS = new Set(['d', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'dx', 'dy', 'width', 'height', 'points',
+    'transform', 'fill', 'fill-opacity', 'fill-rule', 'clip-rule', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
+    'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-miterlimit', 'opacity', 'id', 'offset', 'stop-color',
+    'stop-opacity', 'gradientunits', 'gradienttransform', 'spreadmethod', 'fx', 'fy', 'fr', 'clip-path', 'clippathunits', 'mask',
+    'maskunits', 'viewbox', 'preserveaspectratio', 'href', 'xlink:href', 'font-size', 'font-weight', 'font-family', 'text-anchor',
+    'dominant-baseline', 'letter-spacing', 'style', 'display', 'visibility', 'vector-effect', 'paint-order']);
+const STYLE_PROPS = new Set(['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
+    'stroke-opacity', 'stroke-dasharray', 'stroke-miterlimit', 'opacity', 'stop-color', 'stop-opacity', 'clip-rule', 'display',
+    'font-size', 'font-weight', 'font-family', 'text-anchor']);
+const MAX_SVG_BYTES = 150 * 1024;
+
+// Значение атрибута безопасно? Ссылки — только внутренние (#id).
+function safeValue(name, v) {
+    if (/javascript:|data:|expression\(|@import|<|>/i.test(v)) return false;
+    if ((name === 'href' || name === 'xlink:href') && !/^#[\w-]+$/.test(v)) return false;
+    if (/url\(/i.test(v) && !/^\s*url\(\s*['"]?#[\w-]+['"]?\s*\)\s*$/i.test(v)) return false;
+    return true;
+}
+
+function cleanStyle(style) {
+    return style.split(';').map(x => x.trim()).filter(Boolean).map(decl => {
+        const i = decl.indexOf(':');
+        if (i < 0) return null;
+        const prop = decl.slice(0, i).trim().toLowerCase(), val = decl.slice(i + 1).trim();
+        return STYLE_PROPS.has(prop) && safeValue(prop, val) ? `${prop}:${val}` : null;
+    }).filter(Boolean).join(';');
+}
+
+// Разбирает и чистит SVG. Возвращает { svg, viewBox, colors } или кидает ошибку с понятным текстом.
+function sanitizeSvg(text) {
+    if (typeof text !== 'string' || !text.trim()) throw new Error('Пустой файл.');
+    if (text.length > MAX_SVG_BYTES) throw new Error('Файл больше 150 КБ — упростите иконку.');
+    const doc = new DOMParser().parseFromString(text.replace(/<!DOCTYPE[^>]*>/i, ''), 'image/svg+xml');
+    const root = doc.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.getElementsByTagName('parsererror').length) throw new Error('Это не SVG-файл или он повреждён.');
+
+    let viewBox = root.getAttribute('viewBox');
+    if (!viewBox) {
+        const w = parseFloat(root.getAttribute('width')), h = parseFloat(root.getAttribute('height'));
+        viewBox = w > 0 && h > 0 ? `0 0 ${w} ${h}` : '0 0 24 24';
+    }
+    if (!/^[\d.\s,eE+-]+$/.test(viewBox)) viewBox = '0 0 24 24';
+
+    const colors = new Set();
+    let count = 0;
+    const NS = 'http://www.w3.org/2000/svg';
+    const out = document.implementation.createDocument(NS, 'svg', null).documentElement;
+    out.setAttribute('xmlns', NS);
+    out.setAttribute('viewBox', viewBox.trim());
+
+    const copy = (src, dst) => {
+        for (const child of Array.from(src.childNodes)) {
+            if (child.nodeType === 3 && src.nodeName.toLowerCase() !== 'svg') { dst.append(child.nodeValue); continue; }
+            if (child.nodeType !== 1) continue;
+            const tag = child.localName.toLowerCase();
+            if (!SVG_TAGS.has(tag) || tag === 'svg') {
+                // Вложенный svg и ссылки <a> разворачиваем: фигуры оставляем, обёртку (и ссылку) выбрасываем
+                if (tag === 'svg' || tag === 'a' || tag === 'switch') copy(child, dst);
+                continue;
+            }
+            if (++count > 4000) throw new Error('Слишком сложный файл (больше 4000 элементов).');
+            const node = out.ownerDocument.createElementNS(NS, child.localName);
+            for (const a of Array.from(child.attributes)) {
+                const name = a.name.toLowerCase();
+                if (!SVG_ATTRS.has(name)) continue;
+                let v = a.value;
+                if (name === 'style') { v = cleanStyle(v); if (!v) continue; }
+                else if (!safeValue(name, v)) continue;
+                if (name === 'xlink:href') { node.setAttribute('href', v); continue; }
+                node.setAttribute(a.name, v);
+                if ((name === 'fill' || name === 'stroke' || name === 'stop-color') && !/^(none|currentColor|url\(|transparent|inherit)/i.test(v)) colors.add(v.toLowerCase());
+            }
+            if (tag !== 'title') dst.append(node);
+            copy(child, node);
+        }
+    };
+    copy(root, out);
+    if (!count) throw new Error('В файле нет фигур.');
+    const svg = new XMLSerializer().serializeToString(out);
+    if (svg.length > MAX_SVG_BYTES) throw new Error('Файл больше 150 КБ — упростите иконку.');
+    return { svg, viewBox, colors: colors.size };
+}
+
+// Превращает сохранённый SVG в <symbol>. tint — перекрасить всё в цвет кнопки (currentColor).
+function customSymbol(id, icon) {
+    let clean;
+    try { clean = sanitizeSvg(icon.svg); } catch (_) { return null; } // повторная проверка при каждой загрузке
+    const doc = new DOMParser().parseFromString(clean.svg, 'image/svg+xml');
+    const NS = 'http://www.w3.org/2000/svg';
+    const symbol = document.createElementNS(NS, 'symbol');
+    symbol.id = `i-${id}`;
+    symbol.setAttribute('viewBox', clean.viewBox);
+    // Обёртка сбрасывает стили встроенных иконок (контур 1.8, без заливки)
+    const wrap = document.createElementNS(NS, 'g');
+    wrap.setAttribute('fill', icon.tint ? 'currentColor' : '#000');
+    wrap.setAttribute('stroke', 'none');
+    wrap.setAttribute('stroke-width', '1');
+    const prefix = `${id}-`;
+    const all = [];
+    for (const n of Array.from(doc.documentElement.childNodes)) { const c = document.importNode(n, true); wrap.append(c); }
+    wrap.querySelectorAll('*').forEach(n => all.push(n));
+    for (const n of all) {
+        // Уникальные id, чтобы градиенты разных иконок не путались
+        if (n.id) n.id = prefix + n.id;
+        for (const a of ['fill', 'stroke', 'clip-path', 'mask', 'style', 'href']) {
+            const v = n.getAttribute(a);
+            if (!v) continue;
+            let nv = v.replace(/url\(\s*['"]?#([\w-]+)['"]?\s*\)/g, (m, ref) => `url(#${prefix}${ref})`);
+            if (a === 'href') nv = v.replace(/^#/, `#${prefix}`);
+            if (icon.tint && (a === 'fill' || a === 'stroke') && !/^(none|url\()/i.test(nv)) nv = 'currentColor';
+            if (icon.tint && a === 'style') nv = nv.replace(/(^|;)\s*(fill|stroke)\s*:\s*(?!none|url\()[^;]+/gi, '$1$2:currentColor');
+            n.setAttribute(a, nv);
+        }
+        if (icon.tint && n.localName === 'stop') n.setAttribute('stop-color', 'currentColor');
+    }
+    symbol.append(wrap);
+    return symbol;
+}
+
+let customSprite = null, customKey = '';
+function installCustomIcons(icons) {
+    icons = icons || {};
+    const key = Object.entries(icons).map(([id, i]) => `${id}:${i.tint ? 1 : 0}`).join(',');
+    if (key === customKey && customSprite) return;
+    customKey = key;
+    const NS = 'http://www.w3.org/2000/svg';
+    if (!customSprite) {
+        customSprite = document.createElementNS(NS, 'svg');
+        customSprite.setAttribute('width', '0');
+        customSprite.setAttribute('height', '0');
+        customSprite.style.position = 'absolute';
+        document.body.prepend(customSprite);
+    }
+    customSprite.textContent = '';
+    for (const id of Object.keys(ICONS)) if (ICONS[id].custom) delete ICONS[id];
+    for (const [id, icon] of Object.entries(icons)) {
+        const sym = customSymbol(id, icon);
+        if (!sym) continue;
+        customSprite.append(sym);
+        ICONS[id] = { name: icon.name, custom: true, tint: !!icon.tint };
+    }
+}
+
 function iconEl(id, color) {
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
@@ -97,4 +245,4 @@ function iconEl(id, color) {
     return svg;
 }
 
-if (typeof module !== 'undefined') module.exports = { ICON_GROUPS, ICONS, ICON_COLORS, DEFAULT_COLOR, installIcons, iconEl };
+if (typeof module !== 'undefined') module.exports = { ICON_GROUPS, ICONS, ICON_COLORS, DEFAULT_COLOR, installIcons, installCustomIcons, sanitizeSvg, iconEl };

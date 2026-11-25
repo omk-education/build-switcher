@@ -1,6 +1,6 @@
 'use strict';
 
-/* global ICON_GROUPS, ICONS, ICON_COLORS, DEFAULT_COLOR, installIcons, iconEl */
+/* global ICON_GROUPS, ICONS, ICON_COLORS, DEFAULT_COLOR, installIcons, installCustomIcons, sanitizeSvg, iconEl */
 
 // ---------------------------------------------------------------- связь с модом
 const CHANNEL = 'tera-mod-ui-ipc';
@@ -17,6 +17,7 @@ installIcons();
 let state = null;
 let view = 'main';            // main | settings
 let editing = null;           // имя билда в редакторе
+const CUSTOM_TAB = 'Свои';
 let iconTab = ICON_GROUPS[0].name;
 let lastToastTime = 0, toastTimer = null;
 
@@ -113,7 +114,12 @@ function renderMain(s) {
 }
 
 // ---------------------------------------------------------------- редактор билда
-function openEditor(name) { editing = name; renderEditor(); }
+function openEditor(name) {
+    editing = name;
+    const b = state && state.builds.find(x => x.name === name);
+    if (b && ICONS[b.icon]) iconTab = ICONS[b.icon].custom ? CUSTOM_TAB : ICONS[b.icon].group;
+    renderEditor();
+}
 function closeEditor() {
     const input = $('ed-name');
     if (editing && input.value.trim() && input.value.trim() !== editing) send('rename', editing, input.value.trim());
@@ -135,14 +141,22 @@ function renderEditor() {
 
     const tabs = $('ed-tabs');
     tabs.textContent = '';
-    for (const g of ICON_GROUPS) tabs.append(el('button', { class: g.name === iconTab ? 'on' : '', on: { click: () => { iconTab = g.name; renderEditor(); } } }, g.name));
+    const customIds = Object.keys(state.customIcons || {}).filter(id => ICONS[id]);
+    for (const name of ICON_GROUPS.map(g => g.name).concat(CUSTOM_TAB)) {
+        const label = name === CUSTOM_TAB && customIds.length ? `${name} (${customIds.length})` : name;
+        tabs.append(el('button', { class: name === iconTab ? 'on' : '', on: { click: () => { iconTab = name; renderEditor(); } } }, label));
+    }
 
     const grid = $('ed-icons');
     grid.textContent = '';
-    const group = ICON_GROUPS.find(g => g.name === iconTab) || ICON_GROUPS[0];
-    for (const id of Object.keys(group.icons)) {
+    const ids = iconTab === CUSTOM_TAB ? customIds : Object.keys((ICON_GROUPS.find(g => g.name === iconTab) || ICON_GROUPS[0]).icons);
+    for (const id of ids) {
         grid.append(el('button', { class: id === b.icon ? 'on' : '', title: ICONS[id].name, on: { click: () => send('update', b.name, { icon: id }) } }, iconEl(id)));
     }
+    if (iconTab === CUSTOM_TAB) {
+        grid.append(el('button', { class: 'upload-tile', title: 'Загрузить SVG-файлы', on: { click: () => $('svg-file').click() } }, '+'));
+    }
+    renderCustomTools(b);
 
     const sw = $('ed-colors');
     sw.textContent = '';
@@ -172,6 +186,55 @@ function renderEditor() {
     actions.replaceChild(ow, oldOw);
     actions.replaceChild(del, oldDel);
 }
+
+// Панель под сеткой на вкладке «Свои»: перекраска и удаление выбранной иконки
+function renderCustomTools(b) {
+    const box = $('ed-custom');
+    box.textContent = '';
+    box.classList.toggle('hidden', iconTab !== CUSTOM_TAB);
+    if (iconTab !== CUSTOM_TAB) return;
+    const icon = ICONS[b.icon] && ICONS[b.icon].custom ? (state.customIcons || {})[b.icon] : null;
+    if (icon) {
+        const tint = el('input', { type: 'checkbox', checked: !!icon.tint, on: { change: e => send('iconTint', b.icon, e.target.checked) } });
+        box.append(el('div', { class: 'custom-row' },
+            el('span', { class: 'custom-name', title: icon.name }, icon.name),
+            el('label', { class: 'check', title: 'Залить иконку цветом билда. Выключите для многоцветных иконок.' }, tint, 'Цвет билда'),
+            confirmButton('Удалить иконку', 'Удалить?', 'danger', () => send('deleteIcon', b.icon))));
+    }
+    box.append(el('p', { class: 'hint' }, 'Нажмите «+» или перетащите сюда .svg файлы (до 150 КБ). Скрипты, внешние ссылки и встроенные картинки из файла удаляются. Одноцветные иконки сразу красятся в цвет билда.'));
+}
+
+async function uploadSvgFiles(files) {
+    const list = Array.from(files || []).filter(f => /\.svg$/i.test(f.name) || f.type === 'image/svg+xml');
+    if (!list.length) { showLocalToast('Выберите файлы .svg', 'error'); return; }
+    for (const f of list) {
+        try {
+            if (f.size > 1024 * 1024) throw new Error('Файл больше 1 МБ.');
+            const clean = sanitizeSvg(await f.text());
+            send('addIcon', f.name, clean.svg, clean.colors <= 1, list.length === 1 ? editing : null);
+        } catch (e) {
+            showLocalToast(`${f.name}: ${e.message}`, 'error');
+        }
+    }
+    iconTab = CUSTOM_TAB;
+}
+
+function showLocalToast(text, level) {
+    const t = $('toast');
+    t.textContent = text;
+    t.className = `toast ${level || 'ok'}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.add('hidden'), 8000);
+}
+
+$('svg-file').addEventListener('change', e => { uploadSvgFiles(e.target.files); e.target.value = ''; });
+const sheetBody = document.querySelector('#editor .sheet-body');
+sheetBody.addEventListener('dragover', e => { e.preventDefault(); sheetBody.classList.add('drop'); });
+sheetBody.addEventListener('dragleave', e => { if (e.target === sheetBody) sheetBody.classList.remove('drop'); });
+sheetBody.addEventListener('drop', e => { e.preventDefault(); sheetBody.classList.remove('drop'); uploadSvgFiles(e.dataTransfer.files); });
+// Не даём окну «открыть» перетащенный файл вместо загрузки
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
 
 $('ed-close').addEventListener('click', closeEditor);
 $('editor').addEventListener('click', e => { if (e.target === $('editor')) closeEditor(); });
@@ -294,6 +357,7 @@ function renderCompact(s) {
     const box = $('view-compact');
     box.textContent = '';
     box.classList.toggle('column', s.options.layout === 'column');
+    box.classList.toggle('no-bg', !s.options.buttonBg);
     box.style.setProperty('--isz', `${s.options.iconSize}px`);
     if (!s.builds.length) {
         box.append(el('div', { class: 'compact-empty' }, s.character ? 'Нет билдов' : 'Зайдите в игру'));
@@ -343,6 +407,8 @@ $('toast').addEventListener('click', () => $('toast').classList.add('hidden'));
 function render(s) {
     state = s;
     const o = s.options;
+    installCustomIcons(s.customIcons);
+    document.body.classList.toggle('transparent', !!(o.compact && o.transparentBg));
     document.body.dataset.theme = o.theme || 'tera';
     document.body.classList.toggle('busy', s.busy);
     document.body.classList.toggle('compact', o.compact);

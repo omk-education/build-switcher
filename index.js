@@ -554,6 +554,11 @@ module.exports = function BuildSwitcher(mod) {
             };
         },
         builds() { const c = charData(); return c ? c.builds : {}; },
+        allBuilds() {
+            const out = [];
+            for (const c of Object.values(S().characters || {})) for (const b of Object.values(c.builds || {})) out.push(b);
+            return out;
+        },
         deleteBuild(name) {
             const c = charData();
             if (!c || !c.builds[name]) return false;
