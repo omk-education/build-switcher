@@ -164,7 +164,8 @@ module.exports = function BuildSwitcher(mod) {
         return h;
     }
 
-    mod.game.on('leave_game', () => { resetState(); changed(); });
+    // Toolbox снимает таймеры мода при leave_game: начатое переключение уже не закончится — снимаем блокировку
+    mod.game.on('leave_game', () => { busy = false; pendingPolishTimer = null; resetState(); changed(); });
     // Бой, смерть, воскрешение меняют доступность кнопок — обновляем окна
     if (typeof mod.game.me.on === 'function') for (const ev of ['enter_combat', 'leave_combat', 'die', 'resurrect']) mod.game.me.on(ev, () => changed());
     mod.game.on('enter_game', () => changed());
@@ -718,8 +719,8 @@ module.exports = function BuildSwitcher(mod) {
         const say = text => { if (source === 'chat' || S().chatReports || ((source === 'hotkey' || source === 'bar') && !gui.managerOpen())) msg(text); };
         const deny = text => { say(text); setReport(text, 'error'); };
         if (!S().enabled) return deny(T('Мод выключен (build on).'));
-        // Страховка: если прошлое переключение по какой-то причине не завершилось, через минуту снимаем блокировку
-        if (busy && Date.now() - busySince > 60000) { mod.warn(`busy flag was stuck for ${Date.now() - busySince} ms, reset`); busy = false; }
+        // Страховка: если прошлое переключение по какой-то причине не завершилось, через 30 секунд снимаем блокировку
+        if (busy && Date.now() - busySince > 30000) { mod.warn(`busy flag was stuck for ${Date.now() - busySince} ms, reset`); busy = false; }
         if (busy) return deny(T('Подождите, переключение уже идёт.'));
         const b = getBuild(name);
         if (!b) return deny(T('Билд «{name}» не найден. Сохраните: build save {name}', { name }));

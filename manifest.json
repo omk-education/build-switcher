@@ -2,9 +2,9 @@
     "files": {
         "README.en.md": "02d17acc6ea284b27bf205d3cdd553e876eb9ac1e89d2d79d24dd98968929d03",
         "README.md": "6e61aa8ad1133a7e21d4826531bd4e0a27fa0751bfa8b709b10b9e98ee6fe9e7",
-        "index.js": "90bf76a1d70c8830613751ee487603de0389d913a01aead6885982ebbcb03a76",
-        "lib/gui.js": "84050e9b8f6acfac8d7d7774fa19f8651173b221fa446a4f14ea564c5062ce40",
-        "module.json": "fce58e6ada8b80a46c8d327bea52ff0876abaf78044ff0cc670c934cce0d5609",
+        "index.js": "a052ee03b0035306077d80d3f36fe9f1efae7b039710f92a40d2993a2f8b9202",
+        "lib/gui.js": "edcb912f22db824ce4ff8934e38048a20bbc4201d69322308f3180b6af025ac6",
+        "module.json": "d878249ce6c3c3ff5aa2d617a44f929515b5e3d4f766bfee7191fa9acc0acc29",
         "settings_migrator.js": "e258c2f5457bac12cddf83706670dab467343e337e0200fa2ed4dbbb371037ba",
         "ui/app.js": "6301455b82fbf2785a2808eb0d2b5614dbbd84c1faf35358fa0f0ecdb52a8f5b",
         "ui/bar.html": "cbf144c6c1e8a9f8a318ae93da4fa27b1cb49f713829a359f414401b4452462b",
