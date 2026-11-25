@@ -350,33 +350,6 @@ module.exports = function BuildSwitcher(mod) {
         return { texts, warn };
     }
 
-    // --- роль в подборе подземелий: подставляем роль активного билда в заявку клиента
-    const ROLE_CODES = { tank: 0, dps: 1, heal: 2 };
-    const ROLE_NAMES = { tank: 'Танк', dps: 'ДД', heal: 'Хил' };
-    function roleBuild() {
-        const c = charData();
-        if (!c) return null;
-        const entries = Object.entries(c.builds);
-        // Сначала билд, который совпадает с текущим состоянием, иначе — последний включённый
-        const matching = entries.find(([, b]) => { const v = Object.values(buildMatches(b)); return v.every(x => x !== false) && v.some(x => x === true); });
-        if (matching) return { name: matching[0], build: matching[1] };
-        if (c.active && c.builds[c.active]) return { name: c.active, build: c.builds[c.active] };
-        return null;
-    }
-    hook('C_ADD_INTER_PARTY_MATCH_POOL', 1, { order: 100, filter: { fake: false, incoming: false } }, e => {
-        if (!S().enabled || e.type !== 0) return; // только подземелья
-        const rb = roleBuild();
-        if (!rb || !ROLE_CODES.hasOwnProperty(rb.build.role)) return;
-        const role = ROLE_CODES[rb.build.role];
-        const me = e.players.find(p => p.id === mod.game.me.playerId) || (e.players.length === 1 ? e.players[0] : null);
-        if (!me || me.role === role) return;
-        me.role = role;
-        const text = T('Роль в подборе: {role} (билд «{name}»).', { role: T(ROLE_NAMES[rb.build.role]), name: rb.name });
-        msg(text);
-        setReport(text, 'ok');
-        return true;
-    });
-
     // --- таланты
     const epInfoVersion = mod.majorPatchVersion >= 105 ? 3 : (mod.majorPatchVersion >= 96 ? 2 : 1);
     hook('S_LOAD_EP_INFO', epInfoVersion, watch, e => {
@@ -537,7 +510,7 @@ module.exports = function BuildSwitcher(mod) {
         if (equipKnown()) { b.equip = equipSnapshot(GEAR_SLOTS); b.costume = equipSnapshot(COSTUME_SLOTS); } else missing.push(T('экипировка'));
 
         const old = c.builds[name];
-        if (old) for (const k of ['icon', 'color', 'hotkey', 'role']) if (old[k] !== undefined) b[k] = old[k];
+        if (old) for (const k of ['icon', 'color', 'hotkey']) if (old[k] !== undefined) b[k] = old[k];
         b.parts = {};
         for (const part of PARTS) b.parts[part] = old ? partOn(old, part) : true;
         c.builds[name] = b;
@@ -749,7 +722,6 @@ module.exports = function BuildSwitcher(mod) {
                     equipList: itemList(b.equip),
                     costume: b.costume && Object.keys(b.costume).length ? Object.keys(b.costume).length : null,
                     costumeList: itemList(b.costume),
-                    role: b.role || '',
                     crests: b.crests ? b.crests.length : null,
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
@@ -817,7 +789,7 @@ module.exports = function BuildSwitcher(mod) {
         updateBuild(name, patch) {
             const b = getBuild(name);
             if (!b) return;
-            for (const k of ['icon', 'color', 'hotkey', 'role']) if (k in patch) b[k] = patch[k];
+            for (const k of ['icon', 'color', 'hotkey']) if (k in patch) b[k] = patch[k];
             if ('useCrests' in patch) patch.parts = Object.assign({}, patch.parts, { crests: !!patch.useCrests });
             if (patch.parts) {
                 if (!b.parts) b.parts = Object.fromEntries(PARTS.map(p => [p, partOn(b, p)]));
@@ -902,7 +874,7 @@ module.exports = function BuildSwitcher(mod) {
     function help() {
         msg(T('build save <имя> — сохранить текущие экипировку, символы, таланты и улучшения'));
         msg(T('build <имя> — переключиться (также: {list})', { list: S().shortcuts.join(', ') }));
-        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | role <имя> tank|dps|heal|off | gui | bar | lang ru|en | status | debug | forget | on | off'));
+        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | gui | bar | lang ru|en | status | debug | forget | on | off'));
     }
 
     // ------------------------------------------------------------------ команды
@@ -927,16 +899,6 @@ module.exports = function BuildSwitcher(mod) {
             case 'status': status(); break;
             case 'gui': case 'ui': openGui(); break;
             case 'bar': case 'панель': gui.toggleBar(); break;
-            case 'role': case 'роль': {
-                // build role <имя> tank|dps|heal|off
-                const b = getBuild(args[0]);
-                const map = { tank: 'tank', танк: 'tank', dps: 'dps', dd: 'dps', дд: 'dps', heal: 'heal', healer: 'heal', хил: 'heal', off: '', нет: '' };
-                const r = map[(args[1] || '').toLowerCase()];
-                if (!b || r === undefined) { msg(T('Пример: build role tank tank (роли: tank, dps, heal, off)')); break; }
-                core.updateBuild(args[0], { role: r });
-                msg(r ? T('«{name}»: роль в подборе — {role}.', { name: args[0], role: T(ROLE_NAMES[r]) }) : T('«{name}»: роль в подборе не меняется.', { name: args[0] }));
-                break;
-            }
             case 'lang': case 'language': case 'язык': {
                 const lang = (args[0] || '').toLowerCase();
                 if (!I18N.LANGUAGES[lang]) { msg(T('Пример: build lang en (языки: {list})', { list: Object.keys(I18N.LANGUAGES).join(', ') })); break; }

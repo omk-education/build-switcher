@@ -35,11 +35,9 @@ for (const name of ['PART_LABELS', 'THEME_NAMES']) {
 add(/const CUSTOM_TAB = '([^']*)'/.exec(app)[1], 'ui/app.js CUSTOM_TAB');
 // Пары [значение, 'подпись'] (например, роли в редакторе)
 for (const m of app.matchAll(/\['\w*', '([^']*)'\]/g)) add(m[1], 'ui/app.js list');
-const common = fs.readFileSync(path.join(ROOT, 'ui/common.js'), 'utf8');
-for (const m of /const ROLE_LABELS = \{([^}]*)\}/.exec(common)[1].matchAll(/'([^']*)'/g)) add(m[1], 'ui/common.js ROLE_LABELS');
+
 const idx = fs.readFileSync(path.join(ROOT, 'index.js'), 'utf8');
 for (const m of /const SLOT_NAMES = \{([\s\S]*?)\};/.exec(idx)[1].matchAll(/'([^']*)'/g)) add(m[1], 'index.js SLOT_NAMES');
-for (const m of /const ROLE_NAMES = \{([^}]*)\}/.exec(idx)[1].matchAll(/'([^']*)'/g)) add(m[1], 'index.js ROLE_NAMES');
 for (const m of idx.matchAll(/label: '([^']*)'/g)) add(m[1], 'index.js label');
 const icons = fs.readFileSync(path.join(ROOT, 'ui/icons.js'), 'utf8');
 for (const m of icons.matchAll(/name: '([^']*)'/g)) add(m[1], 'ui/icons.js group');

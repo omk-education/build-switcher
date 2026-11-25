@@ -59,6 +59,9 @@
         <div class="row" data-key="gui.barNoFocus" data-type="bool"><span>Не забирать фокус у игры<small>После нажатия на кнопку игра остаётся активной. Панель перезапустится</small></span></div>
         <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
         <div class="row" data-key="gui.buttonBg" data-type="bool"><span>Фон кнопок<small>Плитка под иконкой. Без неё остаются только иконки</small></span></div>
+        <div class="row stack" data-key="gui.buttonBgColor" data-type="bgcolor"><span>Цвет фона кнопок<small>Радуга — цвет темы</small></span></div>
+        <div class="row" data-key="gui.buttonBgOpacity" data-type="range" data-min="0" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность фона кнопок</span></div>
+        <div class="row" data-key="gui.buttonBorder" data-type="bool"><span>Рамка кнопок</span></div>
         <div class="row" data-key="gui.labels" data-type="bool"><span>Подписи под кнопками</span></div>
         <div class="row" data-key="gui.transparentBg" data-type="bool"><span>Прозрачная панель<small>Над игрой видны только кнопки. Панель перезапустится</small></span></div>
         <div class="row" data-key="gui.layout" data-type="seg" data-options="row:В строку|column:В столбец"><span>Расположение</span></div>
@@ -119,9 +122,6 @@
         <div class="ed-label">Что переключать</div>
         <div class="parts" id="ed-parts"></div>
 
-        <div class="ed-label">Роль в подборе подземелий</div>
-        <div class="seg role-seg" id="ed-role"></div>
-        <p class="hint">Когда вы нажимаете «Поисковый запрос» в окне подбора, мод подставит эту роль, если включён этот билд. «Не менять» — роль из окна подбора.</p>
 
         <div class="ed-label">Иконка</div>
         <div class="tabs" id="ed-tabs"></div>

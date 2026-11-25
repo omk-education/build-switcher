@@ -1,9 +1,9 @@
 /* ---------- темы ---------- */
-body[data-theme="tera"]     { --bg:#0d1726; --bg-2:#13213a; --bg-3:#1a2d4d; --line:#26406a; --text:#dce6f5; --muted:#8397b8; --accent:#4fb3ff; --gold:#e0b44c; --bar1:#182b4a; --bar2:#111f36; --accent-rgb:79,179,255; --gold-rgb:224,180,76; --bg-rgb:13,23,38; --line-rgb:38,64,106; --bg2-rgb:19,33,58; }
-body[data-theme="graphite"] { --bg:#141518; --bg-2:#1c1e22; --bg-3:#26292f; --line:#353941; --text:#e4e6ea; --muted:#8d939e; --accent:#7aa7ff; --gold:#e6c069; --bar1:#202227; --bar2:#18191d; --accent-rgb:122,167,255; --gold-rgb:230,192,105; --bg-rgb:20,21,24; --line-rgb:53,57,65; --bg2-rgb:28,30,34; }
-body[data-theme="crimson"]  { --bg:#170d10; --bg-2:#221318; --bg-3:#2f1a21; --line:#4a2632; --text:#f0dfe3; --muted:#a8858f; --accent:#ff6b81; --gold:#f0b35a; --bar1:#2a161c; --bar2:#1d0f13; --accent-rgb:255,107,129; --gold-rgb:240,179,90; --bg-rgb:23,13,16; --line-rgb:74,38,50; --bg2-rgb:34,19,24; }
-body[data-theme="emerald"]  { --bg:#0b1613; --bg-2:#11211c; --bg-3:#182e27; --line:#244a3e; --text:#dbf0e8; --muted:#7fa496; --accent:#4fd6a0; --gold:#e0c45a; --bar1:#13261f; --bar2:#0e1c17; --accent-rgb:79,214,160; --gold-rgb:224,196,90; --bg-rgb:11,22,19; --line-rgb:36,74,62; --bg2-rgb:17,33,28; }
-body[data-theme="light"]    { --bg:#eef2f7; --bg-2:#ffffff; --bg-3:#e3e9f2; --line:#c9d3e0; --text:#1d2a3a; --muted:#66758a; --accent:#2b7de0; --gold:#b9861c; --bar1:#ffffff; --bar2:#e8edf4; --accent-rgb:43,125,224; --gold-rgb:185,134,28; --bg-rgb:238,242,247; --line-rgb:201,211,224; --bg2-rgb:255,255,255; }
+body[data-theme="tera"]     { --tile-theme-rgb:26,45,77; --bg:#0d1726; --bg-2:#13213a; --bg-3:#1a2d4d; --line:#26406a; --text:#dce6f5; --muted:#8397b8; --accent:#4fb3ff; --gold:#e0b44c; --bar1:#182b4a; --bar2:#111f36; --accent-rgb:79,179,255; --gold-rgb:224,180,76; --bg-rgb:13,23,38; --line-rgb:38,64,106; --bg2-rgb:19,33,58; }
+body[data-theme="graphite"] { --tile-theme-rgb:38,41,47; --bg:#141518; --bg-2:#1c1e22; --bg-3:#26292f; --line:#353941; --text:#e4e6ea; --muted:#8d939e; --accent:#7aa7ff; --gold:#e6c069; --bar1:#202227; --bar2:#18191d; --accent-rgb:122,167,255; --gold-rgb:230,192,105; --bg-rgb:20,21,24; --line-rgb:53,57,65; --bg2-rgb:28,30,34; }
+body[data-theme="crimson"]  { --tile-theme-rgb:47,26,33; --bg:#170d10; --bg-2:#221318; --bg-3:#2f1a21; --line:#4a2632; --text:#f0dfe3; --muted:#a8858f; --accent:#ff6b81; --gold:#f0b35a; --bar1:#2a161c; --bar2:#1d0f13; --accent-rgb:255,107,129; --gold-rgb:240,179,90; --bg-rgb:23,13,16; --line-rgb:74,38,50; --bg2-rgb:34,19,24; }
+body[data-theme="emerald"]  { --tile-theme-rgb:24,46,39; --bg:#0b1613; --bg-2:#11211c; --bg-3:#182e27; --line:#244a3e; --text:#dbf0e8; --muted:#7fa496; --accent:#4fd6a0; --gold:#e0c45a; --bar1:#13261f; --bar2:#0e1c17; --accent-rgb:79,214,160; --gold-rgb:224,196,90; --bg-rgb:11,22,19; --line-rgb:36,74,62; --bg2-rgb:17,33,28; }
+body[data-theme="light"]    { --tile-theme-rgb:227,233,242; --bg:#eef2f7; --bg-2:#ffffff; --bg-3:#e3e9f2; --line:#c9d3e0; --text:#1d2a3a; --muted:#66758a; --accent:#2b7de0; --gold:#b9861c; --bar1:#ffffff; --bar2:#e8edf4; --accent-rgb:43,125,224; --gold-rgb:185,134,28; --bg-rgb:238,242,247; --line-rgb:201,211,224; --bg2-rgb:255,255,255; }
 :root { --ok:#5fd38d; --bad:#ff7a6b; --warn:#f0b35a; --bad-rgb:255,122,107; --warn-rgb:240,179,90; }
 body[data-theme="light"] { --ok:#1f9d55; --bad:#d64535; --warn:#b77400; --bad-rgb:214,69,53; --warn-rgb:183,116,0; }
 
@@ -212,21 +212,25 @@ input, select { font: inherit; }
 body.bar-page { overflow: hidden; height: auto; background: var(--bg); }
 .bar {
     display: inline-flex; gap: 8px; align-items: flex-start; padding: 8px;
-    -webkit-app-region: drag;
+    cursor: default;
 }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+.bar .big { background: radial-gradient(circle at 50% 35%, rgba(var(--tile-rgb), var(--tile-a)), rgba(var(--tile-rgb), var(--tile-a2))); }
+.bar.no-border .big { border-color: transparent; }
+.bar.no-border .cbtn.active .big { border-color: transparent; box-shadow: 0 0 10px rgba(var(--gold-rgb), .7); }
 .bar.column { flex-direction: column; }
-.cbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; -webkit-app-region: no-drag; }
+.cbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; }
 .cbtn .big { width: var(--isz, 56px); height: var(--isz, 56px); }
 .cbtn span { font-size: 11px; color: var(--muted); max-width: calc(var(--isz, 56px) + 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cbtn.active .big { border-color: var(--gold); box-shadow: 0 0 9px rgba(var(--gold-rgb), .55); }
 .cbtn.active span { color: var(--gold); }
 .cbtn.blocked .big { opacity: .5; cursor: not-allowed; }
-.bar-empty { color: var(--muted); background: transparent; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; -webkit-app-region: no-drag; }
+.bar-empty { color: var(--muted); background: transparent; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; }
 
 .bar-tools {
     position: fixed; top: 2px; right: 2px; display: flex; gap: 1px; z-index: 5;
     background: rgba(var(--bg2-rgb), .92); border-radius: 6px;
-    opacity: 0; transition: opacity .15s; -webkit-app-region: no-drag;
+    opacity: 0; transition: opacity .15s;
 }
 body.bar-page:hover .bar-tools { opacity: 1; }
 .bar-tools .win { width: 22px; height: 20px; }
@@ -272,10 +276,9 @@ button.chip:hover { box-shadow: inset 0 0 0 1px var(--accent); }
 .equip-item.on .iname { color: var(--text); }
 .equip-item .mark { color: var(--ok); }
 
-/* ---------- роль в подборе ---------- */
-.tag-role { color: #fff; }
-.tag-role.role-tank { background: #2f6fb8; }
-.tag-role.role-dps { background: #b8532f; }
-.tag-role.role-heal { background: #2f9a5e; }
-.role-seg { align-self: flex-start; }
-.role-seg button { padding: 4px 14px; }
+/* ---------- настройка фона кнопок ---------- */
+.row.stack { flex-wrap: wrap; }
+.bg-swatches { gap: 5px; justify-content: flex-end; }
+.bg-swatches .swatch { width: 22px; height: 22px; }
+.color-input { width: 30px; height: 24px; padding: 0; border: 2px solid var(--line); border-radius: 6px; background: transparent; cursor: pointer; }
+.color-input.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--accent); }

@@ -67,7 +67,6 @@ function el(tag, props, ...children) {
 }
 
 const colorOf = b => b.color || DEFAULT_COLOR[b.icon] || '';
-const ROLE_LABELS = { tank: 'Танк', dps: 'ДД', heal: 'Хил' };
 
 // ---------------------------------------------------------------- тема, масштаб, наведение
 function applyLook(o) {

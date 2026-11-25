@@ -37,6 +37,9 @@ const DefaultSettings = {
         labels: true,         // подписи под кнопками
         layout: 'row',        // 'row' — в строку, 'column' — в столбец
         buttonBg: true,       // фон (плитка) под иконками
+        buttonBgColor: '',    // цвет фона кнопок: '' — по теме, иначе #rrggbb
+        buttonBgOpacity: 100, // непрозрачность фона кнопок, %
+        buttonBorder: true,   // рамка кнопок
         transparentBg: false, // прозрачная панель: над игрой видны только кнопки
         barPosition: null,    // [x, y] — запоминается автоматически
         // окно управления
@@ -88,5 +91,7 @@ module.exports = function MigrateSettings(from_ver, to_ver, settings) {
     if (oldGui.autoOpen !== undefined && oldGui.barOnLogin === undefined) result.gui.barOnLogin = !!oldGui.autoOpen;
     if (oldGui.alwaysOnTop !== undefined && oldGui.barOnTop === undefined) result.gui.barOnTop = !!oldGui.alwaysOnTop;
     for (const k of ['compactSize', 'compact', 'autoHideBar', 'autoOpen', 'alwaysOnTop']) delete result.gui[k];
+    // 4.1: роль в подборе подземелий убрана (сервер её не принимает)
+    for (const c of Object.values(result.characters || {})) for (const b of Object.values((c && c.builds) || {})) delete b.role;
     return result;
 };

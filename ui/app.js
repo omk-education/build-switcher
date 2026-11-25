@@ -2,7 +2,7 @@
 
 /* Окно управления: билды, редактор, настройки. */
 /* global ICON_GROUPS, ICONS, ICON_COLORS, installIcons, installCustomIcons, sanitizeSvg, iconEl,
-   $, el, tr, send, handlers, colorOf, applyLook, collectStatic, setLanguage, I18N, ROLE_LABELS */
+   $, el, tr, send, handlers, colorOf, applyLook, collectStatic, setLanguage, I18N */
 
 installIcons();
 
@@ -86,8 +86,7 @@ function renderMain(s) {
                 el('div', { class: 'card-head' },
                     el('span', { class: 'name' }, b.name),
                     b.active ? el('span', { class: 'tag tag-active' }, tr('включён')) : null,
-                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null,
-                    b.role ? el('span', { class: `tag tag-role role-${b.role}`, title: tr('Роль в подборе подземелий') }, tr(ROLE_LABELS[b.role])) : null),
+                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null),
                 el('div', { class: 'chips' },
                     b.equip !== null && b.equip !== undefined ? chip(tr('Экипировка {n}', { n: b.equip }), b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
                     b.costume ? chip(tr('Костюмы {n}', { n: b.costume }), b.match.costume, !partOn(b, 'costume'), () => togglePart(b, 'costume')) : null,
@@ -165,7 +164,6 @@ function renderEditor() {
         ? tr('Горячие клавиши работают только в TeraToolbox.exe (с интерфейсом).')
         : (!state.options.hotkeysEnabled ? tr('Горячие клавиши выключены в настройках.') : tr('Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.'));
     renderParts(b);
-    renderRole(b);
 
     const actions = $('ed-overwrite').parentNode;
     const oldOw = $('ed-overwrite'), oldDel = $('ed-delete');
@@ -260,15 +258,6 @@ function renderParts(b) {
     box.append(el('p', { class: 'hint' }, tr('Выключенное мод не трогает при переключении: например, только таланты и улучшения, а экипировку и символы вы меняете сами. Плашки на карточке билда тоже переключаются нажатием.')));
 }
 
-// Роль в подборе подземелий
-function renderRole(b) {
-    const box = $('ed-role');
-    box.textContent = '';
-    for (const [v, label] of [['', 'Не менять'], ['tank', 'Танк'], ['dps', 'ДД'], ['heal', 'Хил']]) {
-        box.append(el('button', { class: (b.role || '') === v ? 'on' : '', on: { click: () => send('update', b.name, { role: v }) } }, tr(label)));
-    }
-}
-
 // Захват сочетания клавиш в формате Electron Accelerator
 const KEYMAP = {
     Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: '\'',
@@ -319,6 +308,24 @@ function buildSettings() {
         const { key, type } = row.dataset;
         if (row.ctl) { row.ctl.remove(); row.ctl = null; }
         let ctl;
+        if (type === 'bgcolor') {
+            // Палитра тёмных фонов + свой цвет; пусто — цвет темы
+            const PALETTE = ['', '#000000', '#0d1726', '#1a2d4d', '#26292f', '#3a1a1a', '#14301f', '#2d1f3d', '#4a3a12', '#ffffff'];
+            const dots = PALETTE.map(c => el('button', {
+                class: `swatch${c ? '' : ' auto'}`, title: c || tr('По теме'), style: c ? `background:${c}` : null,
+                on: { click: () => setOpt(key, c) }
+            }));
+            const picker = el('input', { type: 'color', class: 'color-input', title: tr('Свой цвет'), on: { change: e => setOpt(key, e.target.value) } });
+            ctl = el('div', { class: 'swatches bg-swatches' }, dots, picker);
+            row.update = v => {
+                dots.forEach((d, i) => d.classList.toggle('on', (v || '') === PALETTE[i]));
+                picker.classList.toggle('on', !!v && !PALETTE.includes(v));
+                if (v && document.activeElement !== picker) picker.value = v;
+            };
+            row.ctl = ctl;
+            row.append(ctl);
+            continue;
+        }
         if (type === 'lang') {
             const sel = el('select', { on: { change: e => setOpt(key, e.target.value) } },
                 Object.entries(I18N.LANGUAGES).map(([v, label]) => el('option', { value: v }, label)));
@@ -367,6 +374,11 @@ function buildSettings() {
 
 function renderSettings(s) {
     for (const row of document.querySelectorAll('#view-settings .row[data-key]')) if (row.update) row.update(optValue(row.dataset.key));
+    // Цвет, непрозрачность и рамка имеют смысл только при включённом фоне кнопок
+    for (const k of ['gui.buttonBgColor', 'gui.buttonBgOpacity', 'gui.buttonBorder']) {
+        const row = document.querySelector(`.row[data-key="${k}"]`);
+        if (row) row.classList.toggle('hidden', s.options.buttonBg === false);
+    }
     const l = s.learned || {};
     $('learned-info').textContent = tr('страниц талантов: {ep}{ept}, опций улучшения: {polish}{pt}', { ep: l.epPages || 0, ept: l.epTemplate ? tr(' (+шаблон)') : '', polish: l.polish || 0, pt: l.polishTemplate ? tr(' (+шаблон)') : '' });
     $('version').textContent = s.version ? `build-switcher ${s.version}` : '';
@@ -424,7 +436,7 @@ function render(s) {
 // ---------------------------------------------------------------- язык
 // Элементы, которые заполняет код (их текст не берём как статичный)
 collectStatic(['builds', 'alerts', 'now-build', 'now-detail', 'ed-tabs', 'ed-icons', 'ed-custom', 'ed-colors',
-    'ed-parts', 'ed-role', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview']);
+    'ed-parts', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview']);
 
 handlers.state = s => {
     if (setLanguage((s.options && s.options.language) || 'ru')) buildSettings();
