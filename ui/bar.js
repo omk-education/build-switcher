@@ -58,7 +58,7 @@ function render(s) {
 // Подгоняем окно под кнопки — без полос прокрутки
 function fit() {
     if (!state) return;
-    const r = $('bar').getBoundingClientRect();
+    const r = $('wrap').getBoundingClientRect();
     const z = (state.options.zoom || 100) / 100;
     send('fit', Math.max(r.width, 40) * z, Math.max(r.height, 30) * z);
 }

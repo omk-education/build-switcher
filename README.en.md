@@ -98,7 +98,7 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 - By default the bar does not take focus from the game, so you can keep playing right after clicking.
 - Dragging: press the mouse button anywhere on the bar (even on a build button) and move. A move shorter than 5 pixels counts as a normal click. The position is remembered.
 - To avoid moving the bar by accident, lock it: the lock on the bar, ⚙ → "Lock the bar" or `/8 build lock`. A locked bar does not move, while its buttons work as usual.
-- On hover, 🔒 (lock or unlock), ⚙ (manager window) and × (hide the bar) appear.
+- On hover, 🔒 (lock or unlock), ⚙ (manager window) and × (hide the bar) appear above the icons.
 - The bar fits itself to the number and size of buttons.
 - In settings you can remove the button background or pick its color (palette or custom) and opacity, remove the border and labels, make the bar transparent (only the buttons are visible over the game), pick the size and layout (row or column) and the idle opacity.
 

@@ -218,7 +218,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .bar .big { background: radial-gradient(circle at 50% 35%, rgba(var(--tile-rgb), var(--tile-a)), rgba(var(--tile-rgb), var(--tile-a2))); }
 .bar.no-border .big { border-color: transparent; }
 .bar.no-border .cbtn.active .big { border-color: transparent; box-shadow: 0 0 10px rgba(var(--gold-rgb), .7); }
-.bar.column { flex-direction: column; }
+.bar.column { flex-direction: column; align-items: center; }
 .cbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; }
 .cbtn .big { width: var(--isz, 56px); height: var(--isz, 56px); }
 .cbtn span { font-size: 11px; color: var(--muted); max-width: calc(var(--isz, 56px) + 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -227,15 +227,17 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .cbtn.blocked .big { opacity: .5; cursor: not-allowed; }
 .bar-empty { color: var(--muted); background: transparent; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; }
 
+/* Полоска управления над иконками: место зарезервировано всегда, кнопки видны при наведении */
+.bar-wrap { display: inline-flex; flex-direction: column; align-items: stretch; }
 .bar-tools {
-    position: fixed; top: 2px; right: 2px; display: flex; gap: 1px; z-index: 5;
-    background: rgba(var(--bg2-rgb), .92); border-radius: 6px;
-    opacity: 0; transition: opacity .15s;
+    display: flex; justify-content: flex-end; gap: 2px; height: 22px;
+    padding: 2px 6px 0; opacity: 0; transition: opacity .15s;
 }
 body.bar-page:hover .bar-tools { opacity: 1; }
-.bar-tools .win { width: 22px; height: 20px; }
+.bar-tools .win { width: 22px; height: 20px; background: rgba(var(--bg2-rgb), .92); }
 .bar-tools .win svg { width: 12px; height: 12px; }
 .bar-tools .win.on { color: var(--gold); }
+.bar-wrap .bar { padding-top: 2px; }
 
 body.busy .big { cursor: progress; }
 @keyframes pulse { 50% { opacity: .45; } }

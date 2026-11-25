@@ -1,19 +1,19 @@
 {
     "files": {
-        "README.en.md": "bfcd6b43ba5e3da31c26bd25939e523bd521684a45bf681a69365a478b6e1f50",
-        "README.md": "6b214c80c10978adff1f8f5f24b3a2905c881be9d9f85209f1b10d3ead15abe2",
+        "README.en.md": "a8f307f47ee1bc633b91f6e78da46bfb58cb4ace0d80a77b258e8379bbb3eba4",
+        "README.md": "7b95dff89261fbf46760e4b39a81c0f73cde58a0e8390ffadfedf3f7c63382c9",
         "index.js": "62fc230c6dff7e62d84fafeee5e2a814138ef9d2b9f3660ec06409f3443cf18d",
         "lib/gui.js": "b45ec523b279f5276828c8fcf7aef578517a89e7e461237d1873607ccf8d1fd4",
-        "module.json": "a7b695527e568fd963b8bc67e0fa9380d13b9a48f8ac71e878309529ccd0cd8b",
+        "module.json": "57d7cba276c21b0ef1b227c912db237b86d708826cd262320680164f9c38fcd7",
         "settings_migrator.js": "e5e16c95b65899a0679602148f9ef88a836200dbf63f5d642caf6605ae1201fb",
         "ui/app.js": "8e21cdf58214e6ed750634b998eed418db4a6b3541e792472dbab4ff2bc664a2",
-        "ui/bar.html": "9f4d95017ae67aad0b6c5c2ae331b1934a74853ec9258590166aa5b199b23e96",
-        "ui/bar.js": "dae331c39ba3d32a611b9dc9c918cebd3994901a3880d1324a8dac2eb745c7d2",
+        "ui/bar.html": "cbf144c6c1e8a9f8a318ae93da4fa27b1cb49f713829a359f414401b4452462b",
+        "ui/bar.js": "27e5eda68597e5fc99f5d79d2e5c21f7801a1c788853016b883fd18d21c6862b",
         "ui/common.js": "4853788780663fe17dfdbdcc78b537c9011566f4d595966f8e978dc7e91c0ba4",
         "ui/i18n.js": "0f6f7a617d69f69009806440313a3a7b706bccd6e2095fdd35df1c001e84b5f2",
         "ui/icon.png": "153c6b94c62a6de3bd11694f61834e5c937fbfebb45621132679adca35b2f156",
         "ui/icons.js": "d4cfa0f2df2b80fe722ec641ad12add7ac3bc5335576f0f8baa0953c3a7646e5",
         "ui/index.html": "3468c77a6d17f9fed9d65cd71a07c791de320bcbc87849ec54183c0e2e939142",
-        "ui/style.css": "78db355cd4a2aef60ea13eb7a8f1bd393a849ed80b07f5f66737b50615717285"
+        "ui/style.css": "5118599b25a7cff9054d9774664b2a85abf724322367e74c8eb04b63d934439c"
     }
 }
