@@ -8,7 +8,9 @@ A mod for [TERA Toolbox](https://github.com/tera-private-toolbox/tera-toolbox) (
 |---|---|
 | Glyphs (glyph sets 1–5) | The mod stores the list of enabled glyphs and applies it with `C_CREST_APPLY_LIST`. If the server does not apply everything, the mod finishes one glyph at a time with `C_CREST_APPLY`. |
 | Talents (page 1–5) | `C_LOAD_EP_PAGE`. The mod learns this packet when you switch the page yourself in the talent window. |
-| Equipment (weapon, armor, accessories, belt, brooch) | The mod remembers your equipped items and puts them on with a single `C_CHANGE_EQUIP_PRESET` packet, like an equipment preset in the client. Costumes are not touched. If an item is not in your bag (e.g. it is in the bank), the mod tells you. |
+| Equipment (weapon, armor, accessories, belt, brooch) | The mod remembers your equipped items and puts them on with a single `C_CHANGE_EQUIP_PRESET` packet, like an equipment preset in the client. If an item is not in your bag (e.g. it is in the bank), the mod tells you. |
+| Costumes (head, face, weapon skin, costume, back, footprints) | A separate build part, applied with the same packet. Switch them together with equipment or on their own. |
+| Dungeon matching role (tank, DPS, healer) | When you click "Search", the mod puts the active build's role into the `C_ADD_INTER_PARTY_MATCH_POOL` request (only yours; party members' roles are untouched). |
 | Skill advancement (options 1/2/3) | `C_RQ_SKILL_POLISHING_CHANGE_OPTION`. The mod learns this packet when you select an option yourself. |
 
 The packet structures for talents and skill advancement are not described in tera-data, so the mod **learns** them: it stores the packet the client sends and later sends the same one. Toolbox recalculates the integrity hash for padded packets itself.
@@ -69,63 +71,71 @@ You can also do all of this in the mod window: set things up in game, type a nam
 | `/8 build show <name>` | build contents and what matches the current state |
 | `/8 build status` | current state and learned packets |
 | `/8 build del <name>` | delete a build |
-| `/8 build gui` | open the window |
+| `/8 build bar` | show or hide the button bar |
+| `/8 build gui` | open the manager window |
+| `/8 build role <name> tank/dps/heal/off` | dungeon matching role of a build (`off` keeps the role from the matching window) |
 | `/8 build lang ru` / `en` | interface and message language |
-| `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `talents`, `crests`, `polish` |
+| `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `costume`, `talents`, `crests`, `polish` |
 | `/8 build debug` | toggle packet logging (chat and Toolbox log) |
 | `/8 build forget` | forget learned packets |
 | `/8 build on` / `off` | enable / disable the mod |
 
 ## What to switch (build parts)
 
-Each build has four parts: **Equipment**, **Talents**, **Glyphs** and **Advancements** (skill advancement). Any of them can be disabled, and the mod will leave it alone:
+Each build has five parts: **Equipment**, **Costumes**, **Talents**, **Glyphs** and **Advancements** (skill advancement). Any of them can be disabled, and the mod will leave it alone:
 - in the window: build editor (✎) → "What to switch", or simply click a chip on the build card (struck through means disabled);
-- in chat: `/8 build part tank equip off` (parts: `equip`, `talents`, `crests`, `polish`; `on` or `off`).
+- in chat: `/8 build part tank equip off` (parts: `equip`, `costume`, `talents`, `crests`, `polish`; `on` or `off`).
 
 Example: you change gear and glyphs yourself, and the mod only switches talents and advancements.
 
-"Overwrite with current" saves all four parts again; the choice of enabled parts stays the same.
+"Overwrite with current" saves all parts again; enabled parts, role, icon and hotkey stay the same.
 
-## Mod window
+## Dungeon matching role
 
-The window opens automatically when you enter the game. To open it manually: `/8 build gui`. The window only works in **TeraToolbox.exe** (GUI), not in the CLI.
+Build editor (✎) → "Dungeon matching role": **Keep**, **Tank**, **DPS** or **Healer**. In chat: `/8 build role tank tank`.
 
-**Main screen**
+When you click "Search" in the dungeon matching window, the mod takes the role of the active build (the one matching your current state, otherwise the last applied one) and puts it into the request. Chat shows "Matching role: Tank (build "tank")".
+
+The mod cannot tick the role checkbox in the matching window itself: those checkboxes exist only inside the client, clicking them sends nothing to the server, and the client reads its settings only at login. So the checkbox may stay as it was, but the server receives the build's role. Other party members' roles are not touched.
+
+## Mod windows
+
+The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
+
+**Button bar**: a small window over the game with just the build buttons. It appears when you enter the game; hide and show it with `/8 build bar`.
+- Clicking a button switches to that build. The active build is highlighted in gold. The button tooltip shows its hotkey and role.
+- By default the bar does not take focus from the game, so you can keep playing right after clicking.
+- Drag it by the gaps between buttons. On hover, ⚙ (manager window) and × (hide the bar) appear.
+- The bar fits itself to the number and size of buttons.
+- In settings you can remove the button background and labels, make the bar transparent (only the buttons are visible over the game), pick the size and layout (row or column) and the idle opacity.
+
+**Manager window**: builds, editor and settings. Open it with ⚙ on the bar or `/8 build gui`.
 - The "Now" block shows which build is active and warns you when you are in combat, an interaction window is open, or a hotkey could not be registered.
-- The big icon on a card switches to that build. ✓ and ✗ show what matches the current state.
-- The ✎ button opens the build editor: name, what to switch, icon (more than 40 in four groups, plus your own SVGs), color, hotkey, order in the list, "Overwrite with current" and "Delete".
-- The result of a switch appears at the bottom: green if everything worked, yellow for warnings, red for errors.
-
-**Title bar buttons:** ⚙ settings, 📌 always on top, ⇲ compact mode, minimize, close.
-
-**Compact mode.** Only the build buttons remain, and the window fits itself to their number and size. Drag it by any empty space. "Expand" and "Close" appear on hover.
-
-**No background or labels.** In settings (⚙ → "Compact mode"):
-- "Button background" removes the tile behind the icon, leaving just icons with a soft shadow;
-- "Labels under buttons" hides build names;
-- "Transparent window" removes the window background so only the buttons are visible over the game. The window restarts when you toggle it, as Electron requires.
+- The big icon on a card switches to that build. ✓ and ✗ show what matches the current state; the chips enable and disable build parts.
+- The ✎ button opens the build editor: name, what to switch, matching role, icon (more than 40 in four groups, plus your own SVGs), color, hotkey, order in the list, "Overwrite with current" and "Delete".
+- Title bar buttons: ⚙ settings, ▭▭▭ show or hide the button bar, 📌 always on top, minimize, close.
 
 **Custom icons (SVG).** Build editor (✎) → "Custom" tab → "+", or drop .svg files into the editor.
 - Up to 150 KB per file and up to 60 icons. They are stored in `config.json` and survive updates.
 - Single-color icons take the build color. Multicolor icons keep their colors; the "Build color" checkbox fills them with one color.
-- Anything that could run code or load something is removed from the file: scripts, event handlers, external links, embedded images, animations. Only shapes, gradients and masks remain.
+- Anything that could run code or load something is removed from the file: scripts, event handlers, external links, embedded images, animations.
 - Lots of free game icons are available at [game-icons.net](https://game-icons.net) (CC BY 3.0).
 
-**Hotkeys.** They work globally, even when the window is minimized or closed (while Toolbox is running). The combination is captured from all programs, including the game, so pick an unused one: e.g. `Ctrl+Alt+1` or `F9`. Single letters without Ctrl, Alt or Shift are not allowed.
+**Hotkeys.** They work globally, even when the windows are minimized or closed (while Toolbox is running). The combination is captured from all programs, including the game, so pick an unused one: e.g. `Ctrl+Alt+1` or `F9`. Single letters without Ctrl, Alt or Shift are not allowed.
 
 ## Settings (⚙ in the window)
 
 | Section | What you can change |
 |---|---|
-| Window | always on top, open on login, opacity, idle opacity (when the cursor is away), scale, theme (TERA, Graphite, Crimson, Emerald, Light), language |
-| Compact mode | button size, button background, labels, transparent window, row or column, hide title bar |
+| Button bar | show on login, always on top, keep the game focused, button size, button background, labels, transparent bar, row or column, opacity and idle opacity |
+| Manager window | open on login, always on top, scale, theme (TERA, Graphite, Crimson, Emerald, Light), language |
 | Switching | no switching in combat, behavior while an interaction window is open, delay between packets, hotkeys |
 | Notifications | how long to show results, also post to chat, confirm delete and overwrite |
-| Data | forget learned packets, reset window position and opacity |
+| Data | forget learned packets, reset window positions and opacity |
 
 ## Interface language
 
-The window and mod messages are available in Russian (the base language) and English. Switch it in ⚙ → "Window" → "Language", or with `/8 build lang en` (`ru` to go back).
+The window and mod messages are available in Russian (the base language) and English. Switch it in ⚙ → "Manager window" → "Language", or with `/8 build lang en` (`ru` to go back).
 
 Translations live in `ui/i18n.js`. The translation key is the Russian string, so to add a language, add it to `LANGUAGES` and add a dictionary to `DICT`. `node tools/i18n-check.js` verifies that every string is translated (GitHub Actions runs it too).
 

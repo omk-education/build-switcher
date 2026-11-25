@@ -1,16 +1,19 @@
 {
     "files": {
-        "README.en.md": "e5c83e282d8ed138e2022c472b78808d34e66c16b53f975ef13e186ce671fe59",
-        "README.md": "a530e0574d90dda40516bd94dc66dcf0ab407adb7427fc0a985b6249e1b54a16",
-        "index.js": "ea476bf07ff69e4a32a729c3e8252f83ab8dfbfad78d143772b418b30078d55d",
-        "lib/gui.js": "fb86c3b7cffd02662dffaf4d53f444d49baf0a199aa8b964a873dc748b9ef31b",
-        "module.json": "bb12bc7f35761c06502b73d71e726a2d2fc4f0f362f20383c60d1ffa51e6c276",
-        "settings_migrator.js": "04c3c326337b1959d437eef31166423dfbe48f85d887175fbaf4c564560eaadb",
-        "ui/app.js": "85ad475798efc44b76f38d6990cc35098a7c12f8009c7f83b12ea546759f7b50",
-        "ui/i18n.js": "5ac0e73ca003b9a4b726c68d878de2a0bb5461e074d26b5a1ea15a478d3fbefe",
+        "README.en.md": "d8617fd93273f6febc4d869032fbb87adcfde073d4079fb0f8710b468f51da25",
+        "README.md": "2eb1082f37a7e883ef21529be090647ead33b2c1267435241f2d4538e796915f",
+        "index.js": "99f5eaf4c51e636e7a919221f0c9691e17a62e15ff208a81d34b58cdc48b628c",
+        "lib/gui.js": "f8af90605655aeec346ea0bc042a3618f459076022b70d732f15d2b6aca779be",
+        "module.json": "efcd70ced7a9769110983fae01e3f30d67927e4d40b39d574419cc1a0b4e101c",
+        "settings_migrator.js": "f213625cc084a35b0f64d07e9e8026c040b78998b1b56205cad1370949113b04",
+        "ui/app.js": "5ddea2147a6fc3d778611163c5759f1df1b5f41c105e0a8a5eb8a073a565178f",
+        "ui/bar.html": "0f3acff1bff0a73d8467272345033bb6691e3a96b7ac4056145d114ba18cff74",
+        "ui/bar.js": "90da75d83515ab40771da51dadb0c286d2b49d0c5f1eb3f09c1d73b48aa543ef",
+        "ui/common.js": "c41a141e751ec57c38b881771185b098cd9db788e069250329755e03832c6abc",
+        "ui/i18n.js": "0792344930ae91b628069a5d8d4e3111a309e1812032876853ff6e0cf6d5cbca",
         "ui/icon.png": "153c6b94c62a6de3bd11694f61834e5c937fbfebb45621132679adca35b2f156",
         "ui/icons.js": "d4cfa0f2df2b80fe722ec641ad12add7ac3bc5335576f0f8baa0953c3a7646e5",
-        "ui/index.html": "8d721e2aa3f07526a468c0744549cfb4310d5af195de45d1554351685cd2404a",
-        "ui/style.css": "4cea5c1a3cc670538d8db49e0fc57f81483223f7ce498c20d8c3dd11ba50b51d"
+        "ui/index.html": "bb8350d1338d7034060a628e456d2af3a1fb1c6c92a56880451f01284e60cbdb",
+        "ui/style.css": "b77623881887cd600a1929532e693baafea7a2fa54b1c745723cf5a387b27edd"
     }
 }

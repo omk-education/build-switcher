@@ -25,25 +25,30 @@ const DefaultSettings = {
     // Дублировать результат переключения из окна в чат
     chatReports: false,
 
-    // Окно мода (только TeraToolbox.exe)
+    // Окна мода (только TeraToolbox.exe)
     gui: {
-        autoOpen: true,       // открывать окно при входе в игру
-        alwaysOnTop: true,    // поверх всех окон (игра — «Окно» или «Окно без рамки»)
-        compact: false,       // компактный режим: только кнопки билдов
-        opacity: 100,         // непрозрачность окна, %
-        idleOpacity: 100,     // непрозрачность, когда курсор не над окном, %
+        // панель кнопок поверх игры
+        barOnLogin: true,     // показывать при входе в игру
+        barOnTop: true,       // поверх всех окон (игра — «Окно» или «Окно без рамки»)
+        barNoFocus: true,     // не забирать фокус у игры при нажатии
+        opacity: 100,         // непрозрачность, %
+        idleOpacity: 100,     // непрозрачность, когда курсор не над панелью, %
+        iconSize: 56,         // размер кнопок, px
+        labels: true,         // подписи под кнопками
+        layout: 'row',        // 'row' — в строку, 'column' — в столбец
+        buttonBg: true,       // фон (плитка) под иконками
+        transparentBg: false, // прозрачная панель: над игрой видны только кнопки
+        barPosition: null,    // [x, y] — запоминается автоматически
+        // окно управления
+        managerOnLogin: false,
+        managerOnTop: false,
+        position: null,
+        size: null,
+        // общее
         zoom: 100,            // масштаб интерфейса, %
-        iconSize: 56,         // размер кнопок в компактном режиме, px
-        labels: true,         // подписи под кнопками в компактном режиме
-        layout: 'row',        // компактный режим: 'row' — в строку, 'column' — в столбец
-        autoHideBar: true,    // компактный режим: заголовок только при наведении
-        buttonBg: true,       // компактный режим: фон (плитка) под иконками кнопок
-        transparentBg: false, // компактный режим: прозрачное окно — над игрой видны только кнопки
         theme: 'tera',        // tera | graphite | crimson | emerald | light
         toastSeconds: 8,      // сколько секунд показывать результат (0 — не скрывать)
-        confirmDelete: true,  // подтверждать удаление и перезапись
-        position: null,       // [x, y] — запоминается автоматически
-        size: null            // [ширина, высота] обычного режима
+        confirmDelete: true   // подтверждать удаление и перезапись
     },
 
     // Выученные пакеты (заполняются автоматически, руками не трогать)
@@ -78,6 +83,10 @@ module.exports = function MigrateSettings(from_ver, to_ver, settings) {
     result.learned = Object.assign(clone(DefaultSettings.learned), (settings && settings.learned) || {});
     result.gui = Object.assign(clone(DefaultSettings.gui), (settings && settings.gui) || {});
     delete result.panel; // кнопки VIP-панели убраны в 2.0
-    delete result.gui.compactSize;
+    // 4.0: одно окно с компактным режимом разделено на панель кнопок и окно управления
+    const oldGui = (settings && settings.gui) || {};
+    if (oldGui.autoOpen !== undefined && oldGui.barOnLogin === undefined) result.gui.barOnLogin = !!oldGui.autoOpen;
+    if (oldGui.alwaysOnTop !== undefined && oldGui.barOnTop === undefined) result.gui.barOnTop = !!oldGui.alwaysOnTop;
+    for (const k of ['compactSize', 'compact', 'autoHideBar', 'autoOpen', 'alwaysOnTop']) delete result.gui[k];
     return result;
 };

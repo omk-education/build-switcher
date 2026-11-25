@@ -16,8 +16,8 @@
     </div>
     <div class="win-buttons">
         <button class="win" id="btn-settings" title="Настройки"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
-        <button class="win" id="btn-pin" title="Поверх всех окон"><svg viewBox="0 0 24 24"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg></button>
-        <button class="win" id="btn-compact" title="Компактный режим"><svg viewBox="0 0 24 24"><path d="M4 9h6V3M20 15h-6v6M10 9L3 2M14 15l7 7"/></svg></button>
+        <button class="win" id="btn-bar" title="Панель кнопок: показать или скрыть"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="9.5" y="8" width="5" height="8" rx="1.5"/><rect x="16" y="8" width="5" height="8" rx="1.5"/></svg></button>
+        <button class="win" id="btn-pin" title="Окно управления поверх всех окон"><svg viewBox="0 0 24 24"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg></button>
         <button class="win" id="btn-min" title="Свернуть"><svg viewBox="0 0 24 24"><path d="M5 18h14"/></svg></button>
         <button class="win close" id="btn-close" title="Закрыть (открыть снова: /8 build gui)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
@@ -53,24 +53,26 @@
     </div>
 
     <section class="group">
-        <h3>Окно</h3>
-        <div class="row" data-key="gui.alwaysOnTop" data-type="bool"><span>Поверх всех окон<small>Игра должна быть в режиме «Окно» или «Окно без рамки»</small></span></div>
-        <div class="row" data-key="gui.autoOpen" data-type="bool"><span>Открывать при входе в игру</span></div>
-        <div class="row" data-key="gui.opacity" data-type="range" data-min="30" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность</span></div>
-        <div class="row" data-key="gui.idleOpacity" data-type="range" data-min="15" data-max="100" data-step="5" data-unit="%"><span>Когда курсор не над окном<small>Окно становится прозрачнее, пока вы играете</small></span></div>
-        <div class="row" data-key="gui.zoom" data-type="range" data-min="70" data-max="150" data-step="5" data-unit="%"><span>Масштаб интерфейса</span></div>
-        <div class="row" data-key="gui.theme" data-type="theme"><span>Тема</span></div>
-        <div class="row" data-key="language" data-type="lang"><span>Язык<small>Language</small></span></div>
-    </section>
-
-    <section class="group">
-        <h3>Компактный режим</h3>
+        <h3>Панель кнопок</h3>
+        <div class="row" data-key="gui.barOnLogin" data-type="bool"><span>Показывать при входе в игру<small>Скрыть и вернуть: кнопка панели в заголовке или /8 build bar</small></span></div>
+        <div class="row" data-key="gui.barOnTop" data-type="bool"><span>Поверх всех окон<small>Игра должна быть в режиме «Окно» или «Окно без рамки»</small></span></div>
+        <div class="row" data-key="gui.barNoFocus" data-type="bool"><span>Не забирать фокус у игры<small>После нажатия на кнопку игра остаётся активной. Панель перезапустится</small></span></div>
         <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
         <div class="row" data-key="gui.buttonBg" data-type="bool"><span>Фон кнопок<small>Плитка под иконкой. Без неё остаются только иконки</small></span></div>
         <div class="row" data-key="gui.labels" data-type="bool"><span>Подписи под кнопками</span></div>
-        <div class="row" data-key="gui.transparentBg" data-type="bool"><span>Прозрачное окно<small>Над игрой видны только кнопки. Окно перезапустится</small></span></div>
+        <div class="row" data-key="gui.transparentBg" data-type="bool"><span>Прозрачная панель<small>Над игрой видны только кнопки. Панель перезапустится</small></span></div>
         <div class="row" data-key="gui.layout" data-type="seg" data-options="row:В строку|column:В столбец"><span>Расположение</span></div>
-        <div class="row" data-key="gui.autoHideBar" data-type="bool"><span>Прятать заголовок<small>Кнопки управления появятся при наведении</small></span></div>
+        <div class="row" data-key="gui.opacity" data-type="range" data-min="30" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность</span></div>
+        <div class="row" data-key="gui.idleOpacity" data-type="range" data-min="15" data-max="100" data-step="5" data-unit="%"><span>Когда курсор не над панелью<small>Панель становится прозрачнее, пока вы играете</small></span></div>
+    </section>
+
+    <section class="group">
+        <h3>Окно управления</h3>
+        <div class="row" data-key="gui.managerOnLogin" data-type="bool"><span>Открывать при входе в игру<small>Открыть вручную: ⚙ на панели или /8 build gui</small></span></div>
+        <div class="row" data-key="gui.managerOnTop" data-type="bool"><span>Поверх всех окон</span></div>
+        <div class="row" data-key="gui.zoom" data-type="range" data-min="70" data-max="150" data-step="5" data-unit="%"><span>Масштаб интерфейса<small>Для панели и окна управления</small></span></div>
+        <div class="row" data-key="gui.theme" data-type="theme"><span>Тема</span></div>
+        <div class="row" data-key="language" data-type="lang"><span>Язык<small>Language</small></span></div>
     </section>
 
     <section class="group">
@@ -92,7 +94,7 @@
         <h3>Данные</h3>
         <div class="row static"><span>Выученные пакеты<small id="learned-info">—</small></span>
             <button class="small danger" id="btn-forget">Забыть</button></div>
-        <div class="row static"><span>Положение, размер и прозрачность окна</span>
+        <div class="row static"><span>Положение, размер и прозрачность окон</span>
             <button class="small" id="btn-reset-window">Сбросить</button></div>
     </section>
 
@@ -105,13 +107,6 @@
     <p class="version" id="version"></p>
 </main>
 
-<!-- ======================= Компактный режим ======================= -->
-<main id="view-compact" class="view hidden"></main>
-<div class="compact-tools" id="compact-tools">
-    <button class="win" id="c-expand" title="Полный режим"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
-    <button class="win close" id="c-close" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-</div>
-
 <!-- ======================= Редактор билда ======================= -->
 <div class="sheet hidden" id="editor">
     <div class="sheet-body">
@@ -123,6 +118,10 @@
 
         <div class="ed-label">Что переключать</div>
         <div class="parts" id="ed-parts"></div>
+
+        <div class="ed-label">Роль в подборе подземелий</div>
+        <div class="seg role-seg" id="ed-role"></div>
+        <p class="hint">Когда вы нажимаете «Поисковый запрос» в окне подбора, мод подставит эту роль, если включён этот билд. «Не менять» — роль из окна подбора.</p>
 
         <div class="ed-label">Иконка</div>
         <div class="tabs" id="ed-tabs"></div>
@@ -155,6 +154,7 @@
 
 <script src="i18n.js"></script>
 <script src="icons.js"></script>
+<script src="common.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

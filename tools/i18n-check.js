@@ -16,7 +16,7 @@ const keys = new Map(); // ключ -> где встречается
 
 function add(key, where) { if (CYR.test(key) && !keys.has(key)) keys.set(key, where); }
 
-for (const file of ['index.js', 'lib/gui.js', 'ui/app.js']) {
+for (const file of ['index.js', 'lib/gui.js', 'ui/app.js', 'ui/bar.js', 'ui/common.js']) {
     const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
     const re = /\b(?:T|tr)\(\s*'((?:[^'\\]|\\.)*)'/g;
     let m;
@@ -33,15 +33,21 @@ for (const name of ['PART_LABELS', 'THEME_NAMES']) {
     if (block) for (const m of block[1].matchAll(/'([^']*)'/g)) add(m[1], `ui/app.js ${name}`);
 }
 add(/const CUSTOM_TAB = '([^']*)'/.exec(app)[1], 'ui/app.js CUSTOM_TAB');
+// Пары [значение, 'подпись'] (например, роли в редакторе)
+for (const m of app.matchAll(/\['\w*', '([^']*)'\]/g)) add(m[1], 'ui/app.js list');
+const common = fs.readFileSync(path.join(ROOT, 'ui/common.js'), 'utf8');
+for (const m of /const ROLE_LABELS = \{([^}]*)\}/.exec(common)[1].matchAll(/'([^']*)'/g)) add(m[1], 'ui/common.js ROLE_LABELS');
 const idx = fs.readFileSync(path.join(ROOT, 'index.js'), 'utf8');
 for (const m of /const SLOT_NAMES = \{([\s\S]*?)\};/.exec(idx)[1].matchAll(/'([^']*)'/g)) add(m[1], 'index.js SLOT_NAMES');
+for (const m of /const ROLE_NAMES = \{([^}]*)\}/.exec(idx)[1].matchAll(/'([^']*)'/g)) add(m[1], 'index.js ROLE_NAMES');
+for (const m of idx.matchAll(/label: '([^']*)'/g)) add(m[1], 'index.js label');
 const icons = fs.readFileSync(path.join(ROOT, 'ui/icons.js'), 'utf8');
 for (const m of icons.matchAll(/name: '([^']*)'/g)) add(m[1], 'ui/icons.js group');
 for (const m of icons.matchAll(/\['([^']*)', `/g)) add(m[1], 'ui/icons.js icon');
 for (const m of icons.matchAll(/throw new Error\('([^']*)'\)/g)) add(m[1], 'ui/icons.js error');
 
 // Статичный HTML: текст между тегами, title, placeholder, data-options, data-unit, data-zero
-const html = fs.readFileSync(path.join(ROOT, 'ui/index.html'), 'utf8').replace(/<svg[\s\S]*?<\/svg>/g, '');
+const html = ['ui/index.html', 'ui/bar.html'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n').replace(/<svg[\s\S]*?<\/svg>/g, '');
 for (const m of html.matchAll(/>([^<>]+)</g)) { const t = m[1].trim(); if (t) add(t, 'ui/index.html'); }
 for (const m of html.matchAll(/(?:title|placeholder|data-zero|data-unit)="([^"]*)"/g)) add(m[1], 'ui/index.html attr');
 for (const m of html.matchAll(/data-options="([^"]*)"/g)) for (const opt of m[1].split('|')) add(opt.split(':')[1], 'ui/index.html option');

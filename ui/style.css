@@ -208,49 +208,46 @@ input, select { font: inherit; }
 .toast.error { border-left-color: var(--bad); }
 .toast::after { content: '×'; position: absolute; right: 11px; top: 6px; color: var(--muted); font-size: 15px; }
 
-/* ---------- компактный режим ---------- */
-body.compact .titlebar { display: none; }
-body.compact.show-bar .titlebar { display: flex; height: 24px; }
-body.compact.show-bar .titlebar .title { display: none; }
-#view-compact {
-    height: auto; overflow: visible; padding: 8px;
-    display: inline-flex; gap: 8px; align-items: flex-start;
+/* ---------- панель кнопок (bar.html) ---------- */
+body.bar-page { overflow: hidden; height: auto; background: var(--bg); }
+.bar {
+    display: inline-flex; gap: 8px; align-items: flex-start; padding: 8px;
     -webkit-app-region: drag;
 }
-#view-compact.column { flex-direction: column; }
+.bar.column { flex-direction: column; }
 .cbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; -webkit-app-region: no-drag; }
 .cbtn .big { width: var(--isz, 56px); height: var(--isz, 56px); }
 .cbtn span { font-size: 11px; color: var(--muted); max-width: calc(var(--isz, 56px) + 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cbtn.active .big { border-color: var(--gold); box-shadow: 0 0 9px rgba(var(--gold-rgb), .55); }
 .cbtn.active span { color: var(--gold); }
-.cbtn .key { font-size: 9.5px; font-family: Consolas, monospace; color: var(--muted); opacity: .8; }
-.compact-empty { color: var(--muted); padding: 6px 10px; -webkit-app-region: no-drag; }
+.cbtn.blocked .big { opacity: .5; cursor: not-allowed; }
+.bar-empty { color: var(--muted); background: transparent; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; -webkit-app-region: no-drag; }
 
-.compact-tools { display: none; }
-body.compact:not(.show-bar) .compact-tools {
-    display: flex; position: fixed; top: 2px; right: 2px; gap: 1px; z-index: 5;
+.bar-tools {
+    position: fixed; top: 2px; right: 2px; display: flex; gap: 1px; z-index: 5;
     background: rgba(var(--bg2-rgb), .92); border-radius: 6px;
-    opacity: 0; transition: opacity .15s;
+    opacity: 0; transition: opacity .15s; -webkit-app-region: no-drag;
 }
-body.compact:not(.show-bar):hover .compact-tools { opacity: 1; }
-.compact-tools .win { width: 22px; height: 20px; }
-.compact-tools .win svg { width: 12px; height: 12px; }
+body.bar-page:hover .bar-tools { opacity: 1; }
+.bar-tools .win { width: 22px; height: 20px; }
+.bar-tools .win svg { width: 12px; height: 12px; }
 
 body.busy .big { cursor: progress; }
 @keyframes pulse { 50% { opacity: .45; } }
-body.busy .now-value, body.busy .cbtn .big:not(:disabled) { animation: pulse 1s infinite; }
+body.busy .now-value, body.busy .cbtn .big { animation: pulse 1s infinite; }
 
 /* ---------- без фона и прозрачное окно ---------- */
-#view-compact.no-bg .big { background: transparent; border-color: transparent; box-shadow: none; }
-#view-compact.no-bg .big .ico { width: 84%; height: 84%; filter: drop-shadow(0 1px 2px rgba(0,0,0,.85)) drop-shadow(0 0 1px rgba(0,0,0,.6)); }
-#view-compact.no-bg .cbtn:hover .big .ico { filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), .9)) drop-shadow(0 1px 2px rgba(0,0,0,.85)); }
-#view-compact.no-bg .cbtn.active .big { box-shadow: none; border-color: transparent; }
-#view-compact.no-bg .cbtn.active .big .ico { filter: drop-shadow(0 0 6px rgba(var(--gold-rgb), .95)) drop-shadow(0 1px 2px rgba(0,0,0,.85)); }
-#view-compact.no-bg .cbtn span { text-shadow: 0 1px 2px #000, 0 0 3px #000; }
-body.transparent, body.transparent html { background: transparent; }
+.bar.no-bg .big { background: transparent; border-color: transparent; box-shadow: none; }
+.bar.no-bg .big .ico { width: 84%; height: 84%; filter: drop-shadow(0 1px 2px rgba(0,0,0,.85)) drop-shadow(0 0 1px rgba(0,0,0,.6)); }
+.bar.no-bg .cbtn:hover .big .ico { filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), .9)) drop-shadow(0 1px 2px rgba(0,0,0,.85)); }
+.bar.no-bg .cbtn.active .big { box-shadow: none; border-color: transparent; }
+.bar.no-bg .cbtn.active .big .ico { filter: drop-shadow(0 0 6px rgba(var(--gold-rgb), .95)) drop-shadow(0 1px 2px rgba(0,0,0,.85)); }
+.bar.no-bg .cbtn span { text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+html { background: transparent; }
+body.transparent { background: transparent; }
 body.transparent .cbtn span { color: #e8eef8; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
 body.transparent .cbtn.active span { color: var(--gold); }
-body.transparent .compact-empty { color: #fff; text-shadow: 0 1px 2px #000; }
+body.transparent .bar-empty { color: #fff; text-shadow: 0 1px 2px #000; border-color: rgba(255,255,255,.4); }
 
 /* ---------- свои иконки ---------- */
 .upload-tile { font-size: 22px; color: var(--accent) !important; border-style: dashed !important; }
@@ -274,3 +271,11 @@ button.chip:hover { box-shadow: inset 0 0 0 1px var(--accent); }
 .equip-item .iname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .equip-item.on .iname { color: var(--text); }
 .equip-item .mark { color: var(--ok); }
+
+/* ---------- роль в подборе ---------- */
+.tag-role { color: #fff; }
+.tag-role.role-tank { background: #2f6fb8; }
+.tag-role.role-dps { background: #b8532f; }
+.tag-role.role-heal { background: #2f9a5e; }
+.role-seg { align-self: flex-start; }
+.role-seg button { padding: 4px 14px; }

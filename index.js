@@ -197,10 +197,13 @@ module.exports = function BuildSwitcher(mod) {
 
     // --- экипировка (tera-game-state inventory)
     // Слоты снаряжения: 1 оружие, 3 тело, 4 руки, 5 ноги, 6-7 серьги, 8-9 кольца, 10 ожерелье, 11 бельё,
-    // 12 голова (циркулет), 13 лицо (маска), 19 пояс, 20 брошь, 22-23 реликвии. Костюмы (14-18, 21) не трогаем.
+    // 12 голова (циркулет), 13 лицо (маска), 19 пояс, 20 брошь, 22-23 реликвии.
+    // Костюмы — отдельная часть билда: 14 головной убор, 15 маска, 16 оружие (облик), 17 костюм, 18 спина, 21 следы.
     const GEAR_SLOTS = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 19, 20, 22, 23];
+    const COSTUME_SLOTS = [14, 15, 16, 17, 18, 21];
     const SLOT_NAMES = { 1: 'оружие', 3: 'нагрудник', 4: 'перчатки', 5: 'обувь', 6: 'серьга', 7: 'серьга', 8: 'кольцо', 9: 'кольцо',
-        10: 'ожерелье', 11: 'бельё', 12: 'голова', 13: 'маска', 19: 'пояс', 20: 'брошь', 22: 'реликвия', 23: 'реликвия' };
+        10: 'ожерелье', 11: 'бельё', 12: 'голова', 13: 'маска', 19: 'пояс', 20: 'брошь', 22: 'реликвия', 23: 'реликвия',
+        14: 'костюм: голова', 15: 'костюм: лицо', 16: 'облик оружия', 17: 'костюм', 18: 'спина', 21: 'следы' };
     const slotName = slot => (SLOT_NAMES[slot] ? T(SLOT_NAMES[slot]) : T('слот {n}', { n: slot }));
     let inventory = null;
     try {
@@ -210,9 +213,9 @@ module.exports = function BuildSwitcher(mod) {
     } catch (e) { mod.warn(T('tera-game-state: inventory недоступен — переключение экипировки отключено.')); }
 
     function equipKnown() { return !!(inventory && inventory.equipment && inventory.equipment.slots && Object.keys(inventory.equipment.slots).length); }
-    function equipSnapshot() {
+    function equipSnapshot(slots = GEAR_SLOTS) {
         const out = {};
-        for (const slot of GEAR_SLOTS) {
+        for (const slot of slots) {
             const it = inventory.equipment.slots[slot];
             if (!it) continue;
             out[slot] = {
@@ -291,14 +294,18 @@ module.exports = function BuildSwitcher(mod) {
         } catch (e) { dbg(`C_CHANGE_EQUIP_PRESET parse error: ${e.message}`); }
     });
 
-    async function applyEquip(saved, delay) {
-        if (!equipKnown()) return { text: T('экипировка: состояние неизвестно (откройте инвентарь)'), warn: true };
+    // Надевает сохранённые предметы одним пакетом. groups: [{ saved, label }] — экипировка и/или костюмы.
+    async function applyEquip(groups, delay) {
+        const label = g => T(g.label);
+        if (!equipKnown()) return { texts: groups.map(g => T('{part}: состояние неизвестно (откройте инвентарь)', { part: label(g) })), warn: true };
+        const saved = Object.assign({}, ...groups.map(g => g.saved));
         const diff = equipDiff(saved);
-        if (!diff.length) return { text: T('экипировка: уже') };
+        if (!diff.length) return { texts: groups.map(g => T('{part}: уже', { part: label(g) })) };
 
-        const missing = diff.filter(slot => !inventory.dbids[saved[slot].dbid] && !Object.values(inventory.dbids).some(x => String(x.dbid) === saved[slot].dbid));
+        const owned = dbid => !!inventory.dbids[dbid] || Object.values(inventory.dbids).some(x => String(x.dbid) === dbid);
+        const missing = diff.filter(slot => !owned(saved[slot].dbid));
         const want = {};
-        // Берём всё надетое сейчас (чтобы не снять костюмы и прочее), поверх — сохранённое
+        // Берём всё надетое сейчас (чтобы не снять то, что билд не трогает), поверх — сохранённое
         for (const [slot, it] of Object.entries(inventory.equipment.slots)) {
             if (!it || it.dbid === undefined) continue;
             want[slot] = { slot: +slot, dbid: String(it.dbid), passivitySet: it.passivitySet | 0, crystals: (it.crystals || []).filter(Boolean) };
@@ -309,11 +316,11 @@ module.exports = function BuildSwitcher(mod) {
             for (const k of Object.keys(want)) if (want[k].dbid === it.dbid && +k !== +slot && !(k in saved)) delete want[k];
             want[slot] = { slot: +slot, dbid: it.dbid, passivitySet: it.passivitySet | 0, crystals: it.crystals || [] };
         }
-        const items = Object.values(want).sort((a, b) => a.slot - b.slot);
+        const items = Object.values(want).sort((x, y) => x.slot - y.slot);
         const crystals = [];
         for (const it of items) for (const id of it.crystals) crystals.push({ slot: it.slot, id });
         const pkt = equipPresetPacket(items, crystals);
-        if (!pkt) return { text: T('экипировка: пакет C_CHANGE_EQUIP_PRESET неизвестен в этой версии'), warn: true };
+        if (!pkt) return { texts: [T('экипировка: пакет C_CHANGE_EQUIP_PRESET неизвестен в этой версии')], warn: true };
 
         const reply = new Promise(resolve => {
             let done = false;
@@ -328,12 +335,47 @@ module.exports = function BuildSwitcher(mod) {
 
         const left = equipDiff(saved).filter(x => !missing.includes(x));
         const names = slots => slots.map(sl => saved[sl].name || slotName(sl)).join(', ');
-        let text;
-        if (!left.length) text = T('экипировка: ок ({n})', { n: diff.length - missing.length });
-        else text = T('экипировка: сервер не надел {items}', { items: names(left) }) + (ok ? '' : T(' — включите /8 build debug, переоденьтесь вручную и пришлите лог'));
-        if (missing.length) text += T('; нет в сумке: {items}', { items: names(missing) });
-        return { text, warn: !!(left.length || missing.length) };
+        let warn = false;
+        const texts = groups.map(g => {
+            const own = slot => slot in g.saved;
+            const gDiff = diff.filter(own), gLeft = left.filter(own), gMissing = missing.filter(own);
+            let text;
+            if (!gDiff.length) text = T('{part}: уже', { part: label(g) });
+            else if (!gLeft.length) text = T('{part}: ок ({n})', { part: label(g), n: gDiff.length - gMissing.length });
+            else text = T('{part}: сервер не надел {items}', { part: label(g), items: names(gLeft) }) + (ok ? '' : T(' — включите /8 build debug, переоденьтесь вручную и пришлите лог'));
+            if (gMissing.length) text += T('; нет в сумке: {items}', { items: names(gMissing) });
+            if (gLeft.length || gMissing.length) warn = true;
+            return text;
+        });
+        return { texts, warn };
     }
+
+    // --- роль в подборе подземелий: подставляем роль активного билда в заявку клиента
+    const ROLE_CODES = { tank: 0, dps: 1, heal: 2 };
+    const ROLE_NAMES = { tank: 'Танк', dps: 'ДД', heal: 'Хил' };
+    function roleBuild() {
+        const c = charData();
+        if (!c) return null;
+        const entries = Object.entries(c.builds);
+        // Сначала билд, который совпадает с текущим состоянием, иначе — последний включённый
+        const matching = entries.find(([, b]) => { const v = Object.values(buildMatches(b)); return v.every(x => x !== false) && v.some(x => x === true); });
+        if (matching) return { name: matching[0], build: matching[1] };
+        if (c.active && c.builds[c.active]) return { name: c.active, build: c.builds[c.active] };
+        return null;
+    }
+    hook('C_ADD_INTER_PARTY_MATCH_POOL', 1, { order: 100, filter: { fake: false, incoming: false } }, e => {
+        if (!S().enabled || e.type !== 0) return; // только подземелья
+        const rb = roleBuild();
+        if (!rb || !ROLE_CODES.hasOwnProperty(rb.build.role)) return;
+        const role = ROLE_CODES[rb.build.role];
+        const me = e.players.find(p => p.id === mod.game.me.playerId) || (e.players.length === 1 ? e.players[0] : null);
+        if (!me || me.role === role) return;
+        me.role = role;
+        const text = T('Роль в подборе: {role} (билд «{name}»).', { role: T(ROLE_NAMES[rb.build.role]), name: rb.name });
+        msg(text);
+        setReport(text, 'ok');
+        return true;
+    });
 
     // --- таланты
     const epInfoVersion = mod.majorPatchVersion >= 105 ? 3 : (mod.majorPatchVersion >= 96 ? 2 : 1);
@@ -462,7 +504,7 @@ module.exports = function BuildSwitcher(mod) {
 
     // Какие части билда переключать: equip — экипировка, talents — таланты, crests — символы (изученные умения),
     // polish — улучшение умений. Старые билды хранили только useCrests.
-    const PARTS = ['equip', 'talents', 'crests', 'polish'];
+    const PARTS = ['equip', 'costume', 'talents', 'crests', 'polish'];
     function partOn(b, part) {
         if (b.parts && b.parts[part] !== undefined) return !!b.parts[part];
         if (part === 'crests') return b.useCrests !== false;
@@ -470,8 +512,9 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     function buildMatches(b) {
-        const res = { equip: null, crests: null, ep: null, polish: null };
+        const res = { equip: null, costume: null, crests: null, ep: null, polish: null };
         if (b.equip && partOn(b, 'equip') && equipKnown()) res.equip = equipDiff(b.equip).length === 0;
+        if (b.costume && Object.keys(b.costume).length && partOn(b, 'costume') && equipKnown()) res.costume = equipDiff(b.costume).length === 0;
         if (b.crests && partOn(b, 'crests') && st.crestsKnown) res.crests = sameSet(enabledCrests(), b.crests);
         if (b.epPreset !== undefined && b.epPreset !== null && partOn(b, 'talents') && st.epPreset !== null) res.ep = st.epPreset === b.epPreset;
         if (b.polish && partOn(b, 'polish') && st.polishKnown) res.polish = Object.entries(b.polish).every(([g, id]) => st.polish.get(+g) === id);
@@ -491,10 +534,10 @@ module.exports = function BuildSwitcher(mod) {
             b.polish = {};
             for (const [group, id] of st.polish) if (id) b.polish[group] = id;
         } else missing.push(T('улучшение умений'));
-        if (equipKnown()) b.equip = equipSnapshot(); else missing.push(T('экипировка'));
+        if (equipKnown()) { b.equip = equipSnapshot(GEAR_SLOTS); b.costume = equipSnapshot(COSTUME_SLOTS); } else missing.push(T('экипировка'));
 
         const old = c.builds[name];
-        if (old) for (const k of ['icon', 'color', 'hotkey']) if (old[k] !== undefined) b[k] = old[k];
+        if (old) for (const k of ['icon', 'color', 'hotkey', 'role']) if (old[k] !== undefined) b[k] = old[k];
         b.parts = {};
         for (const part of PARTS) b.parts[part] = old ? partOn(old, part) : true;
         c.builds[name] = b;
@@ -638,12 +681,15 @@ module.exports = function BuildSwitcher(mod) {
                 }
             }
 
-            // 4. Экипировка (последней: самый тяжёлый шаг)
-            if (b.equip && Object.keys(b.equip).length && partOn(b, 'equip')) {
+            // 4. Экипировка и костюмы — одним пакетом (последними: самый тяжёлый шаг)
+            const gearGroups = [];
+            if (b.equip && Object.keys(b.equip).length && partOn(b, 'equip')) gearGroups.push({ saved: b.equip, label: 'экипировка' });
+            if (b.costume && Object.keys(b.costume).length && partOn(b, 'costume')) gearGroups.push({ saved: b.costume, label: 'костюмы' });
+            if (gearGroups.length) {
                 if (!inventory) report.push(T('экипировка: недоступна'));
                 else {
-                    const r = await applyEquip(b.equip, delay);
-                    report.push(r.text);
+                    const r = await applyEquip(gearGroups, delay);
+                    report.push(...r.texts);
                     if (r.warn) warn = true;
                 }
             }
@@ -672,6 +718,10 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     const NAME_RE = /^[\wа-яё-]{1,24}$/i;
+    const itemList = saved => (saved ? Object.entries(saved).map(([slot, it]) => ({
+        slot: +slot, slotName: slotName(slot), name: it.name || T('предмет {id}', { id: it.id }),
+        equipped: !!(equipKnown() && inventory.equipment.slots[slot] && String(inventory.equipment.slots[slot].dbid) === it.dbid)
+    })) : []);
     const core = {
         mod, msg, save, T,
         settings: S,
@@ -696,7 +746,10 @@ module.exports = function BuildSwitcher(mod) {
                     useCrests: partOn(b, 'crests'),
                     parts: Object.fromEntries(PARTS.map(p => [p, partOn(b, p)])),
                     equip: b.equip ? Object.keys(b.equip).length : null,
-                    equipList: b.equip ? Object.entries(b.equip).map(([slot, it]) => ({ slot: +slot, slotName: slotName(slot), name: it.name || T('предмет {id}', { id: it.id }), equipped: !!(equipKnown() && inventory.equipment.slots[slot] && String(inventory.equipment.slots[slot].dbid) === it.dbid) })) : [],
+                    equipList: itemList(b.equip),
+                    costume: b.costume && Object.keys(b.costume).length ? Object.keys(b.costume).length : null,
+                    costumeList: itemList(b.costume),
+                    role: b.role || '',
                     crests: b.crests ? b.crests.length : null,
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
@@ -714,6 +767,7 @@ module.exports = function BuildSwitcher(mod) {
                 openWindow: win,
                 current: {
                     equip: equipKnown() ? GEAR_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
+                    costume: equipKnown() ? COSTUME_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
                     epPreset: st.epPreset,
                     crests: st.crestsKnown ? enabledCrests().length : null,
                     polish: st.polishKnown ? [...st.polish.values()].filter(Boolean).length : null
@@ -763,7 +817,7 @@ module.exports = function BuildSwitcher(mod) {
         updateBuild(name, patch) {
             const b = getBuild(name);
             if (!b) return;
-            for (const k of ['icon', 'color', 'hotkey']) if (k in patch) b[k] = patch[k];
+            for (const k of ['icon', 'color', 'hotkey', 'role']) if (k in patch) b[k] = patch[k];
             if ('useCrests' in patch) patch.parts = Object.assign({}, patch.parts, { crests: !!patch.useCrests });
             if (patch.parts) {
                 if (!b.parts) b.parts = Object.fromEntries(PARTS.map(p => [p, partOn(b, p)]));
@@ -781,7 +835,7 @@ module.exports = function BuildSwitcher(mod) {
 
     const gui = new (require('./lib/gui'))(core);
     function changed() { gui.changed(); }
-    function openGui() { gui.open(); }
+    function openGui() { gui.openManager(); }
 
     // ------------------------------------------------------------------ имена (из датацентра, если доступно)
     async function lookupName(kind, id) {
@@ -848,7 +902,7 @@ module.exports = function BuildSwitcher(mod) {
     function help() {
         msg(T('build save <имя> — сохранить текущие экипировку, символы, таланты и улучшения'));
         msg(T('build <имя> — переключиться (также: {list})', { list: S().shortcuts.join(', ') }));
-        msg(T('build list | show <имя> | del <имя> | part <имя> equip|talents|crests|polish on|off | gui | lang ru|en | status | debug | forget | on | off'));
+        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | role <имя> tank|dps|heal|off | gui | bar | lang ru|en | status | debug | forget | on | off'));
     }
 
     // ------------------------------------------------------------------ команды
@@ -872,6 +926,17 @@ module.exports = function BuildSwitcher(mod) {
             }
             case 'status': status(); break;
             case 'gui': case 'ui': openGui(); break;
+            case 'bar': case 'панель': gui.toggleBar(); break;
+            case 'role': case 'роль': {
+                // build role <имя> tank|dps|heal|off
+                const b = getBuild(args[0]);
+                const map = { tank: 'tank', танк: 'tank', dps: 'dps', dd: 'dps', дд: 'dps', heal: 'heal', healer: 'heal', хил: 'heal', off: '', нет: '' };
+                const r = map[(args[1] || '').toLowerCase()];
+                if (!b || r === undefined) { msg(T('Пример: build role tank tank (роли: tank, dps, heal, off)')); break; }
+                core.updateBuild(args[0], { role: r });
+                msg(r ? T('«{name}»: роль в подборе — {role}.', { name: args[0], role: T(ROLE_NAMES[r]) }) : T('«{name}»: роль в подборе не меняется.', { name: args[0] }));
+                break;
+            }
             case 'lang': case 'language': case 'язык': {
                 const lang = (args[0] || '').toLowerCase();
                 if (!I18N.LANGUAGES[lang]) { msg(T('Пример: build lang en (языки: {list})', { list: Object.keys(I18N.LANGUAGES).join(', ') })); break; }
@@ -883,9 +948,9 @@ module.exports = function BuildSwitcher(mod) {
             case 'part': {
                 // build part <имя> <equip|talents|crests|polish> on|off
                 const b = getBuild(args[0]);
-                const map = { equip: 'equip', экип: 'equip', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
+                const map = { equip: 'equip', экип: 'equip', costume: 'costume', костюмы: 'costume', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
                 const part = map[(args[1] || '').toLowerCase()];
-                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, talents, crests, polish)')); break; }
+                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, costume, talents, crests, polish)')); break; }
                 core.updateBuild(args[0], { parts: { [part]: (args[2] || '').toLowerCase() !== 'off' } });
                 msg(T('«{name}»: {part} {state}.', { name: args[0], part, state: T(partOn(b, part) ? 'вкл' : 'выкл') }));
                 break;

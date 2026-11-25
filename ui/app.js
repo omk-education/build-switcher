@@ -1,17 +1,9 @@
 'use strict';
 
-/* global ICON_GROUPS, ICONS, ICON_COLORS, DEFAULT_COLOR, installIcons, installCustomIcons, sanitizeSvg, iconEl */
+/* Окно управления: билды, редактор, настройки. */
+/* global ICON_GROUPS, ICONS, ICON_COLORS, installIcons, installCustomIcons, sanitizeSvg, iconEl,
+   $, el, tr, send, handlers, colorOf, applyLook, collectStatic, setLanguage, I18N, ROLE_LABELS */
 
-// ---------------------------------------------------------------- связь с модом
-const CHANNEL = 'tera-mod-ui-ipc';
-let ipc = null, webFrame = null;
-try { const e = require('electron'); ipc = e.ipcRenderer; webFrame = e.webFrame; } catch (_) { /* предпросмотр в браузере */ }
-
-const handlers = {};
-function send(name, ...args) { if (ipc) ipc.send(CHANNEL, name, ...args); else if (window.__preview) window.__preview(name, ...args); }
-if (ipc) ipc.on(CHANNEL, (event, name, ...args) => { if (handlers[name]) handlers[name](...args); });
-
-const $ = id => document.getElementById(id);
 installIcons();
 
 let state = null;
@@ -20,26 +12,9 @@ let editing = null;           // имя билда в редакторе
 const CUSTOM_TAB = 'Свои';
 let iconTab = ICON_GROUPS[0].name;
 let lastToastTime = 0, toastTimer = null;
-let lang = 'ru';
-// Перевод: ключ — русская строка (базовый язык), см. i18n.js
-const tr = (key, params) => I18N.translate(lang, key, params);
 
-function el(tag, props, ...children) {
-    const node = document.createElement(tag);
-    for (const [k, v] of Object.entries(props || {})) {
-        if (v === undefined || v === null) continue;
-        if (k === 'class') node.className = v;
-        else if (k === 'style') node.style.cssText = v;
-        else if (k === 'on') for (const [ev, fn] of Object.entries(v)) node.addEventListener(ev, fn);
-        else if (typeof v === 'boolean' || k === 'value') node[k] = v;
-        else node.setAttribute(k, v);
-    }
-    for (const c of children.flat()) if (c !== null && c !== undefined && c !== false) node.append(c.nodeType ? c : String(c));
-    return node;
-}
-
-const colorOf = b => b.color || DEFAULT_COLOR[b.icon] || '';
-const PART_LABELS = { equip: 'Экипировка', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
+const PART_LABELS = { equip: 'Экипировка', costume: 'Костюмы', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
+const PART_ORDER = ['equip', 'costume', 'talents', 'crests', 'polish'];
 const partOn = (b, p) => !b.parts || b.parts[p] !== false;
 function togglePart(b, p) { send('update', b.name, { parts: { [p]: !partOn(b, p) } }); }
 const pageText = p => (p === null || p === undefined ? '?' : tr('стр. {n}', { n: p + 1 }));
@@ -111,9 +86,11 @@ function renderMain(s) {
                 el('div', { class: 'card-head' },
                     el('span', { class: 'name' }, b.name),
                     b.active ? el('span', { class: 'tag tag-active' }, tr('включён')) : null,
-                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null),
+                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null,
+                    b.role ? el('span', { class: `tag tag-role role-${b.role}`, title: tr('Роль в подборе подземелий') }, tr(ROLE_LABELS[b.role])) : null),
                 el('div', { class: 'chips' },
                     b.equip !== null && b.equip !== undefined ? chip(tr('Экипировка {n}', { n: b.equip }), b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
+                    b.costume ? chip(tr('Костюмы {n}', { n: b.costume }), b.match.costume, !partOn(b, 'costume'), () => togglePart(b, 'costume')) : null,
                     b.epPreset !== null ? chip(tr('Таланты {page}', { page: pageText(b.epPreset) }), b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
                     b.crests !== null ? chip(tr('Символы {n}', { n: b.crests }), b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
                     b.polish !== null ? chip(tr('Улучшения {n}', { n: b.polish }), b.match.polish, !partOn(b, 'polish'), () => togglePart(b, 'polish'))  : null),
@@ -188,6 +165,7 @@ function renderEditor() {
         ? tr('Горячие клавиши работают только в TeraToolbox.exe (с интерфейсом).')
         : (!state.options.hotkeysEnabled ? tr('Горячие клавиши выключены в настройках.') : tr('Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.'));
     renderParts(b);
+    renderRole(b);
 
     const actions = $('ed-overwrite').parentNode;
     const oldOw = $('ed-overwrite'), oldDel = $('ed-delete');
@@ -244,46 +222,52 @@ const sheetBody = document.querySelector('#editor .sheet-body');
 sheetBody.addEventListener('dragover', e => { e.preventDefault(); sheetBody.classList.add('drop'); });
 sheetBody.addEventListener('dragleave', e => { if (e.target === sheetBody) sheetBody.classList.remove('drop'); });
 sheetBody.addEventListener('drop', e => { e.preventDefault(); sheetBody.classList.remove('drop'); uploadSvgFiles(e.dataTransfer.files); });
-// Не даём окну «открыть» перетащенный файл вместо загрузки
-document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => e.preventDefault());
 
 $('ed-close').addEventListener('click', closeEditor);
 $('editor').addEventListener('click', e => { if (e.target === $('editor')) closeEditor(); });
 $('ed-name').addEventListener('keydown', e => { if (e.key === 'Enter') closeEditor(); if (e.key === 'Escape') { $('ed-name').value = editing; closeEditor(); } });
-let equipListOpen = false;
+const listOpen = {};
 function renderParts(b) {
     const box = $('ed-parts');
     box.textContent = '';
     const info = {
         equip: b.equip ? tr('{n} предм.', { n: b.equip }) : tr('не сохранена'),
+        costume: b.costume ? tr('{n} предм.', { n: b.costume }) : tr('не сохранены'),
         talents: b.epPreset !== null ? pageText(b.epPreset) : tr('не сохранены'),
         crests: b.crests !== null ? tr('{n} шт.', { n: b.crests }) : tr('не сохранены'),
         polish: b.polish !== null ? tr('{n} опц.', { n: b.polish }) : tr('не сохранены')
     };
-    const matchKey = { equip: 'equip', talents: 'ep', crests: 'crests', polish: 'polish' };
-    for (const p of ['equip', 'talents', 'crests', 'polish']) {
+    const matchKey = { equip: 'equip', costume: 'costume', talents: 'ep', crests: 'crests', polish: 'polish' };
+    const lists = { equip: b.equipList, costume: b.costumeList };
+    for (const p of PART_ORDER) {
         const input = el('input', { type: 'checkbox', checked: partOn(b, p), on: { change: () => togglePart(b, p) } });
         const m = b.match[matchKey[p]];
         const row = el('div', { class: 'part-row' },
             el('label', { class: 'switch' }, input, el('i')),
             el('span', { class: 'part-name' }, tr(PART_LABELS[p])),
             el('span', { class: `part-info${m === true ? ' ok' : m === false ? ' bad' : ''}` }, info[p] + (m === true ? ' ✓' : m === false ? ' ✗' : '')));
-        if (p === 'equip' && b.equipList && b.equipList.length) {
-            row.append(el('button', { class: 'link', on: { click: () => { equipListOpen = !equipListOpen; renderParts(b); } } }, equipListOpen ? tr('скрыть') : tr('список')));
+        const list = lists[p];
+        if (list && list.length) {
+            row.append(el('button', { class: 'link', on: { click: () => { listOpen[p] = !listOpen[p]; renderParts(b); } } }, listOpen[p] ? tr('скрыть') : tr('список')));
         }
         box.append(row);
-        if (p === 'equip' && equipListOpen && b.equipList) {
-            box.append(el('div', { class: 'equip-list' }, b.equipList.map(it =>
+        if (list && listOpen[p]) {
+            box.append(el('div', { class: 'equip-list' }, list.map(it =>
                 el('div', { class: `equip-item${it.equipped ? ' on' : ''}`, title: it.equipped ? tr('Надет сейчас') : tr('Сейчас не надет') },
                     el('span', { class: 'slot' }, it.slotName), el('span', { class: 'iname' }, it.name), el('span', { class: 'mark' }, it.equipped ? '✓' : '')))));
         }
     }
     box.append(el('p', { class: 'hint' }, tr('Выключенное мод не трогает при переключении: например, только таланты и улучшения, а экипировку и символы вы меняете сами. Плашки на карточке билда тоже переключаются нажатием.')));
 }
-$('ed-up').addEventListener('click', () => editing && send('move', editing, -1));
-$('ed-down').addEventListener('click', () => editing && send('move', editing, 1));
-$('ed-hotkey-clear').addEventListener('click', () => editing && send('update', editing, { hotkey: '' }));
+
+// Роль в подборе подземелий
+function renderRole(b) {
+    const box = $('ed-role');
+    box.textContent = '';
+    for (const [v, label] of [['', 'Не менять'], ['tank', 'Танк'], ['dps', 'ДД'], ['heal', 'Хил']]) {
+        box.append(el('button', { class: (b.role || '') === v ? 'on' : '', on: { click: () => send('update', b.name, { role: v }) } }, tr(label)));
+    }
+}
 
 // Захват сочетания клавиш в формате Electron Accelerator
 const KEYMAP = {
@@ -404,48 +388,12 @@ function setView(v) {
     if (state) render(state);
 }
 
-// ---------------------------------------------------------------- компактный режим
-function renderCompact(s) {
-    const box = $('view-compact');
-    box.textContent = '';
-    box.classList.toggle('column', s.options.layout === 'column');
-    box.classList.toggle('no-bg', !s.options.buttonBg);
-    box.style.setProperty('--isz', `${s.options.iconSize}px`);
-    if (!s.builds.length) {
-        box.append(el('div', { class: 'compact-empty' }, s.character ? tr('Нет билдов') : tr('Зайдите в игру')));
-    }
-    const blocked = s.busy || (s.inCombat && s.options.blockInCombat);
-    for (const b of s.builds) {
-        box.append(el('button', {
-            class: `cbtn${b.active ? ' active' : ''}`,
-            title: tr('Включить «{name}»', { name: b.name }) + (b.hotkey ? ` (${b.hotkey})` : '') + (s.inCombat && s.options.blockInCombat ? tr(' — недоступно в бою') : ''),
-            on: { click: () => !blocked && send('apply', b.name) }
-        },
-        el('div', { class: 'big', style: colorOf(b) ? `color:${colorOf(b)}` : null }, iconEl(b.icon)),
-        s.options.labels ? el('span', {}, b.name) : null));
-    }
-    requestAnimationFrame(fitCompact);
-}
-
-// Подгоняем окно под кнопки — без полос прокрутки
-function fitCompact() {
-    if (!state || !state.options.compact) return;
-    const box = $('view-compact').getBoundingClientRect();
-    const bar = document.body.classList.contains('show-bar') ? $('titlebar').getBoundingClientRect().height : 0;
-    const z = (state.options.zoom || 100) / 100;
-    send('fit', Math.max(box.width, 96) * z, (box.height + bar) * z);
-}
-
-$('c-expand').addEventListener('click', () => setOpt('gui.compact', false));
-$('c-close').addEventListener('click', () => send('close'));
-
 // ---------------------------------------------------------------- уведомление
 function renderToast(s) {
     const t = $('toast');
     const r = s.report;
     if (!r || r.time === lastToastTime) return;
     lastToastTime = r.time;
-    if (s.options.compact) return; // в компактном режиме места нет — результат виден по подсветке кнопки
     t.textContent = r.text;
     t.className = `toast ${r.level || 'ok'}`;
     clearTimeout(toastTimer);
@@ -459,68 +407,35 @@ $('toast').addEventListener('click', () => $('toast').classList.add('hidden'));
 function render(s) {
     state = s;
     const o = s.options;
+    applyLook(o);
     installCustomIcons(s.customIcons);
-    document.body.classList.toggle('transparent', !!(o.compact && o.transparentBg));
-    document.body.dataset.theme = o.theme || 'tera';
     document.body.classList.toggle('busy', s.busy);
-    document.body.classList.toggle('compact', o.compact);
-    document.body.classList.toggle('show-bar', o.compact && !o.autoHideBar);
-    if (webFrame) webFrame.setZoomFactor((o.zoom || 100) / 100);
-    $('btn-pin').classList.toggle('on', o.alwaysOnTop);
+    $('btn-pin').classList.toggle('on', !!o.managerOnTop);
+    $('btn-bar').classList.toggle('on', !!s.barOpen);
     $('btn-settings').classList.toggle('on', view === 'settings');
 
-    const compact = o.compact;
-    $('view-main').classList.toggle('hidden', compact || view !== 'main');
-    $('view-settings').classList.toggle('hidden', compact || view !== 'settings');
-    $('view-compact').classList.toggle('hidden', !compact);
-    if (compact) { $('editor').classList.add('hidden'); renderCompact(s); }
-    else if (view === 'settings') renderSettings(s);
+    $('view-main').classList.toggle('hidden', view !== 'main');
+    $('view-settings').classList.toggle('hidden', view !== 'settings');
+    if (view === 'settings') renderSettings(s);
     else { renderMain(s); if (editing) renderEditor(); }
     renderToast(s);
 }
 
-// ---------------------------------------------------------------- язык: статичный текст из index.html
-// Запоминаем исходные (русские) тексты, подсказки и плейсхолдеры, при смене языка подставляем перевод.
-const DYNAMIC_IDS = ['builds', 'alerts', 'now-build', 'now-detail', 'view-compact', 'ed-tabs', 'ed-icons', 'ed-custom', 'ed-colors',
-    'ed-parts', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview'];
-const staticTexts = [], staticAttrs = [];
-function collectStatic() {
-    const dynamic = DYNAMIC_IDS.map(id => $(id)).filter(Boolean);
-    const inDynamic = n => dynamic.some(d => d === n || d.contains(n));
-    for (const node of document.querySelectorAll('body *')) {
-        if (node.closest('svg') || node.tagName === 'SCRIPT' || inDynamic(node)) continue;
-        for (const child of node.childNodes) {
-            if (child.nodeType !== 3 || !child.nodeValue.trim()) continue;
-            const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(child.nodeValue);
-            staticTexts.push({ node: child, lead: m[1], key: m[2], trail: m[3] });
-        }
-        for (const attr of ['title', 'placeholder']) {
-            const v = node.getAttribute(attr);
-            if (v) staticAttrs.push({ node, attr, key: v });
-        }
-    }
-}
-function applyStatic() {
-    for (const t of staticTexts) t.node.nodeValue = t.lead + tr(t.key) + t.trail;
-    for (const a of staticAttrs) a.node.setAttribute(a.attr, tr(a.key));
-    document.documentElement.lang = lang;
-}
-collectStatic();
+// ---------------------------------------------------------------- язык
+// Элементы, которые заполняет код (их текст не берём как статичный)
+collectStatic(['builds', 'alerts', 'now-build', 'now-detail', 'ed-tabs', 'ed-icons', 'ed-custom', 'ed-colors',
+    'ed-parts', 'ed-role', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview']);
 
-function setLanguage(next) {
-    if (!I18N.LANGUAGES[next] || next === lang) return;
-    lang = next;
-    applyStatic();
-    buildSettings();
-}
-
-handlers.state = s => { setLanguage((s.options && s.options.language) || 'ru'); render(s); };
+handlers.state = s => {
+    if (setLanguage((s.options && s.options.language) || 'ru')) buildSettings();
+    render(s);
+};
 
 // ---------------------------------------------------------------- заголовок и прочее
 $('btn-close').addEventListener('click', () => send('close'));
 $('btn-min').addEventListener('click', () => send('minimize'));
-$('btn-pin').addEventListener('click', () => state && setOpt('gui.alwaysOnTop', !state.options.alwaysOnTop));
-$('btn-compact').addEventListener('click', () => state && setOpt('gui.compact', !state.options.compact));
+$('btn-pin').addEventListener('click', () => state && setOpt('gui.managerOnTop', !state.options.managerOnTop));
+$('btn-bar').addEventListener('click', () => send('toggleBar'));
 
 function saveNew() {
     const name = $('new-name').value.trim();
@@ -531,9 +446,6 @@ function saveNew() {
 $('btn-save').addEventListener('click', saveNew);
 $('new-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveNew(); });
 
-// Прозрачность «в покое»: сообщаем, наведён ли курсор
-document.documentElement.addEventListener('mouseenter', () => send('hover', true));
-document.documentElement.addEventListener('mouseleave', () => send('hover', false));
 
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && editing && document.activeElement !== hk) closeEditor();
