@@ -20,6 +20,9 @@ let editing = null;           // имя билда в редакторе
 const CUSTOM_TAB = 'Свои';
 let iconTab = ICON_GROUPS[0].name;
 let lastToastTime = 0, toastTimer = null;
+let lang = 'ru';
+// Перевод: ключ — русская строка (базовый язык), см. i18n.js
+const tr = (key, params) => I18N.translate(lang, key, params);
 
 function el(tag, props, ...children) {
     const node = document.createElement(tag);
@@ -39,7 +42,7 @@ const colorOf = b => b.color || DEFAULT_COLOR[b.icon] || '';
 const PART_LABELS = { equip: 'Экипировка', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
 const partOn = (b, p) => !b.parts || b.parts[p] !== false;
 function togglePart(b, p) { send('update', b.name, { parts: { [p]: !partOn(b, p) } }); }
-const pageText = p => (p === null || p === undefined ? '?' : `стр. ${p + 1}`);
+const pageText = p => (p === null || p === undefined ? '?' : tr('стр. {n}', { n: p + 1 }));
 
 // Кнопка с подтверждением вторым нажатием (если включено в настройках)
 let confirmTimer = null;
@@ -63,7 +66,7 @@ function chip(text, match, off, onClick) {
     if (onClick) cls += ' toggle';
     return el(onClick ? 'button' : 'span', {
         class: cls,
-        title: onClick ? (off ? 'Не переключается. Нажмите, чтобы включить' : 'Нажмите, чтобы не переключать это') : '',
+        title: onClick ? (off ? tr('Не переключается. Нажмите, чтобы включить') : tr('Нажмите, чтобы не переключать это')) : '',
         on: onClick ? { click: onClick } : null
     }, text + mark);
 }
@@ -72,50 +75,50 @@ function renderAlerts(s) {
     const box = $('alerts');
     box.textContent = '';
     const add = (text, bad) => box.append(el('div', { class: `alert${bad ? ' bad' : ''}` }, text));
-    if (s.inCombat && s.options.blockInCombat) add('В бою: переключение недоступно.', true);
+    if (s.inCombat && s.options.blockInCombat) add(tr('В бою: переключение недоступно.'), true);
     if (s.openWindow) {
-        const how = { single: 'символы будут переставлены по одному (медленнее)', skip: 'символы не будут сменены', abort: 'сменить символы нельзя, закройте его' }[s.options.crestsWhenBusy];
-        add(`Открыто окно взаимодействия (NPC, банк, торговля, крафт…): ${how}.`, s.options.crestsWhenBusy === 'abort');
+        const how = { single: tr('символы будут переставлены по одному (медленнее)'), skip: tr('символы не будут сменены'), abort: tr('сменить символы нельзя, закройте его') }[s.options.crestsWhenBusy];
+        add(tr('Открыто окно взаимодействия (NPC, банк, торговля, крафт…): {how}.', { how }), s.options.crestsWhenBusy === 'abort');
     }
-    if (s.hotkeyErrors && s.hotkeyErrors.length) add(`Не удалось занять клавиши: ${s.hotkeyErrors.join(', ')}. Их перехватила другая программа.`, true);
+    if (s.hotkeyErrors && s.hotkeyErrors.length) add(tr('Не удалось занять клавиши: {list}. Их перехватила другая программа.', { list: s.hotkeyErrors.join(', ') }), true);
 }
 
 function renderMain(s) {
     $('char').textContent = s.character ? `· ${s.character}` : '';
     const active = s.builds.filter(b => b.active).map(b => b.name);
     const now = $('now-build');
-    if (s.busy) { now.textContent = 'Переключение…'; now.className = 'now-value'; }
+    if (s.busy) { now.textContent = tr('Переключение…'); now.className = 'now-value'; }
     else if (active.length) { now.textContent = active.join(', '); now.className = 'now-value'; }
-    else { now.textContent = s.character ? 'Не совпадает ни с одним билдом' : 'Нет персонажа'; now.className = 'now-value none'; }
+    else { now.textContent = s.character ? tr('Не совпадает ни с одним билдом') : tr('Нет персонажа'); now.className = 'now-value none'; }
     const c = s.current;
     $('now-detail').innerHTML = '';
     $('now-detail').append(
-        el('div', {}, `Экипировка ${c.equip === null || c.equip === undefined ? '?' : c.equip} · Таланты ${pageText(c.epPreset)}`),
-        el('div', {}, `Символы ${c.crests === null ? '?' : c.crests} · Улучшения ${c.polish === null ? '?' : c.polish}`));
+        el('div', {}, tr('Экипировка {equip} · Таланты {page}', { equip: c.equip === null || c.equip === undefined ? '?' : c.equip, page: pageText(c.epPreset) })),
+        el('div', {}, tr('Символы {crests} · Улучшения {polish}', { crests: c.crests === null ? '?' : c.crests, polish: c.polish === null ? '?' : c.polish })));
     renderAlerts(s);
 
     const box = $('builds');
     box.textContent = '';
-    if (!s.character) { box.append(el('div', { class: 'empty' }, 'Зайдите на персонажа.')); }
+    if (!s.character) { box.append(el('div', { class: 'empty' }, tr('Зайдите на персонажа.'))); }
     else if (!s.builds.length) {
-        box.append(el('div', { class: 'empty' }, 'Билдов пока нет. Настройте в игре символы, таланты и улучшения умений, впишите имя ниже (например, tank) и нажмите «Сохранить текущее».'));
+        box.append(el('div', { class: 'empty' }, tr('Билдов пока нет. Настройте в игре экипировку, символы, таланты и улучшения умений, впишите имя ниже (например, tank) и нажмите «Сохранить текущее».')));
     }
     for (const b of s.builds) {
         const blocked = s.busy || (s.inCombat && s.options.blockInCombat);
         box.append(el('div', { class: `card${b.active ? ' active' : ''}` },
-            el('button', { class: 'big', title: `Включить «${b.name}»${b.hotkey ? ` (${b.hotkey})` : ''}`, disabled: blocked, style: colorOf(b) ? `color:${colorOf(b)}` : null, on: { click: () => send('apply', b.name) } }, iconEl(b.icon)),
+            el('button', { class: 'big', title: tr('Включить «{name}»', { name: b.name }) + (b.hotkey ? ` (${b.hotkey})` : ''), disabled: blocked, style: colorOf(b) ? `color:${colorOf(b)}` : null, on: { click: () => send('apply', b.name) } }, iconEl(b.icon)),
             el('div', { class: 'card-body' },
                 el('div', { class: 'card-head' },
                     el('span', { class: 'name' }, b.name),
-                    b.active ? el('span', { class: 'tag tag-active' }, 'включён') : null,
-                    b.hotkey ? el('span', { class: 'tag tag-key', title: 'Горячая клавиша' }, b.hotkey) : null),
+                    b.active ? el('span', { class: 'tag tag-active' }, tr('включён')) : null,
+                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null),
                 el('div', { class: 'chips' },
-                    b.equip !== null && b.equip !== undefined ? chip(`Экипировка ${b.equip}`, b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
-                    b.epPreset !== null ? chip(`Таланты ${pageText(b.epPreset)}`, b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
-                    b.crests !== null ? chip(`Символы ${b.crests}`, b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
-                    b.polish !== null ? chip(`Улучшения ${b.polish}`, b.match.polish, !partOn(b, 'polish'), () => togglePart(b, 'polish'))  : null),
-                b.missing.length ? el('div', { class: 'warn', title: 'Один раз переключите это в игре вручную, и мод запомнит' }, `Нужно выучить: ${b.missing.join(', ')}`) : null),
-            el('button', { class: 'win edit-btn', title: 'Настроить билд', on: { click: () => openEditor(b.name) } },
+                    b.equip !== null && b.equip !== undefined ? chip(tr('Экипировка {n}', { n: b.equip }), b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
+                    b.epPreset !== null ? chip(tr('Таланты {page}', { page: pageText(b.epPreset) }), b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
+                    b.crests !== null ? chip(tr('Символы {n}', { n: b.crests }), b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
+                    b.polish !== null ? chip(tr('Улучшения {n}', { n: b.polish }), b.match.polish, !partOn(b, 'polish'), () => togglePart(b, 'polish'))  : null),
+                b.missing.length ? el('div', { class: 'warn', title: tr('Один раз переключите это в игре вручную, и мод запомнит') }, tr('Нужно выучить: {list}', { list: b.missing.join(', ') })) : null),
+            el('button', { class: 'win edit-btn', title: tr('Настроить билд'), on: { click: () => openEditor(b.name) } },
                 el('span', { style: 'font-size:15px' }, '✎'))
         ));
     }
@@ -152,7 +155,7 @@ function renderEditor() {
     tabs.textContent = '';
     const customIds = Object.keys(state.customIcons || {}).filter(id => ICONS[id]);
     for (const name of ICON_GROUPS.map(g => g.name).concat(CUSTOM_TAB)) {
-        const label = name === CUSTOM_TAB && customIds.length ? `${name} (${customIds.length})` : name;
+        const label = name === CUSTOM_TAB && customIds.length ? `${tr(name)} (${customIds.length})` : tr(name);
         tabs.append(el('button', { class: name === iconTab ? 'on' : '', on: { click: () => { iconTab = name; renderEditor(); } } }, label));
     }
 
@@ -160,10 +163,10 @@ function renderEditor() {
     grid.textContent = '';
     const ids = iconTab === CUSTOM_TAB ? customIds : Object.keys((ICON_GROUPS.find(g => g.name === iconTab) || ICON_GROUPS[0]).icons);
     for (const id of ids) {
-        grid.append(el('button', { class: id === b.icon ? 'on' : '', title: ICONS[id].name, on: { click: () => send('update', b.name, { icon: id }) } }, iconEl(id)));
+        grid.append(el('button', { class: id === b.icon ? 'on' : '', title: tr(ICONS[id].name), on: { click: () => send('update', b.name, { icon: id }) } }, iconEl(id)));
     }
     if (iconTab === CUSTOM_TAB) {
-        grid.append(el('button', { class: 'upload-tile', title: 'Загрузить SVG-файлы', on: { click: () => $('svg-file').click() } }, '+'));
+        grid.append(el('button', { class: 'upload-tile', title: tr('Загрузить SVG-файлы'), on: { click: () => $('svg-file').click() } }, '+'));
     }
     renderCustomTools(b);
 
@@ -172,7 +175,7 @@ function renderEditor() {
     for (const c of ICON_COLORS) {
         sw.append(el('button', {
             class: `swatch${c ? '' : ' auto'}${(b.color || '') === c ? ' on' : ''}`,
-            title: c ? c : 'Авто (по иконке)',
+            title: c ? c : tr('Авто (по иконке)'),
             style: c ? `background:${c}` : null,
             on: { click: () => send('update', b.name, { color: c }) }
         }));
@@ -182,15 +185,15 @@ function renderEditor() {
     if (!hk.classList.contains('listening')) hk.value = b.hotkey || '';
     hk.disabled = !state.hotkeysAvailable;
     $('ed-hotkey-hint').textContent = !state.hotkeysAvailable
-        ? 'Горячие клавиши работают только в TeraToolbox.exe (с интерфейсом).'
-        : (!state.options.hotkeysEnabled ? 'Горячие клавиши выключены в настройках.' : 'Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.');
+        ? tr('Горячие клавиши работают только в TeraToolbox.exe (с интерфейсом).')
+        : (!state.options.hotkeysEnabled ? tr('Горячие клавиши выключены в настройках.') : tr('Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.'));
     renderParts(b);
 
     const actions = $('ed-overwrite').parentNode;
     const oldOw = $('ed-overwrite'), oldDel = $('ed-delete');
-    const ow = confirmButton('Перезаписать текущим', 'Точно перезаписать?', '', () => send('save', b.name));
+    const ow = confirmButton(tr('Перезаписать текущим'), tr('Точно перезаписать?'), '', () => send('save', b.name));
     ow.id = 'ed-overwrite';
-    const del = confirmButton('Удалить', 'Удалить?', 'danger', () => { send('delete', b.name); editing = null; sheet.classList.add('hidden'); });
+    const del = confirmButton(tr('Удалить'), tr('Удалить?'), 'danger', () => { send('delete', b.name); editing = null; sheet.classList.add('hidden'); });
     del.id = 'ed-delete';
     actions.replaceChild(ow, oldOw);
     actions.replaceChild(del, oldDel);
@@ -207,22 +210,22 @@ function renderCustomTools(b) {
         const tint = el('input', { type: 'checkbox', checked: !!icon.tint, on: { change: e => send('iconTint', b.icon, e.target.checked) } });
         box.append(el('div', { class: 'custom-row' },
             el('span', { class: 'custom-name', title: icon.name }, icon.name),
-            el('label', { class: 'check', title: 'Залить иконку цветом билда. Выключите для многоцветных иконок.' }, tint, 'Цвет билда'),
-            confirmButton('Удалить иконку', 'Удалить?', 'danger', () => send('deleteIcon', b.icon))));
+            el('label', { class: 'check', title: tr('Залить иконку цветом билда. Выключите для многоцветных иконок.') }, tint, tr('Цвет билда')),
+            confirmButton(tr('Удалить иконку'), tr('Удалить?'), 'danger', () => send('deleteIcon', b.icon))));
     }
-    box.append(el('p', { class: 'hint' }, 'Нажмите «+» или перетащите сюда .svg файлы (до 150 КБ). Скрипты, внешние ссылки и встроенные картинки из файла удаляются. Одноцветные иконки сразу красятся в цвет билда.'));
+    box.append(el('p', { class: 'hint' }, tr('Нажмите «+» или перетащите сюда .svg файлы (до 150 КБ). Скрипты, внешние ссылки и встроенные картинки из файла удаляются. Одноцветные иконки сразу красятся в цвет билда.')));
 }
 
 async function uploadSvgFiles(files) {
     const list = Array.from(files || []).filter(f => /\.svg$/i.test(f.name) || f.type === 'image/svg+xml');
-    if (!list.length) { showLocalToast('Выберите файлы .svg', 'error'); return; }
+    if (!list.length) { showLocalToast(tr('Выберите файлы .svg'), 'error'); return; }
     for (const f of list) {
         try {
-            if (f.size > 1024 * 1024) throw new Error('Файл больше 1 МБ.');
+            if (f.size > 1024 * 1024) throw new Error(tr('Файл больше 1 МБ.'));
             const clean = sanitizeSvg(await f.text());
             send('addIcon', f.name, clean.svg, clean.colors <= 1, list.length === 1 ? editing : null);
         } catch (e) {
-            showLocalToast(`${f.name}: ${e.message}`, 'error');
+            showLocalToast(`${f.name}: ${tr(e.message)}`, 'error');
         }
     }
     iconTab = CUSTOM_TAB;
@@ -253,10 +256,10 @@ function renderParts(b) {
     const box = $('ed-parts');
     box.textContent = '';
     const info = {
-        equip: b.equip ? `${b.equip} предм.` : 'не сохранена',
-        talents: b.epPreset !== null ? pageText(b.epPreset) : 'не сохранены',
-        crests: b.crests !== null ? `${b.crests} шт.` : 'не сохранены',
-        polish: b.polish !== null ? `${b.polish} опц.` : 'не сохранены'
+        equip: b.equip ? tr('{n} предм.', { n: b.equip }) : tr('не сохранена'),
+        talents: b.epPreset !== null ? pageText(b.epPreset) : tr('не сохранены'),
+        crests: b.crests !== null ? tr('{n} шт.', { n: b.crests }) : tr('не сохранены'),
+        polish: b.polish !== null ? tr('{n} опц.', { n: b.polish }) : tr('не сохранены')
     };
     const matchKey = { equip: 'equip', talents: 'ep', crests: 'crests', polish: 'polish' };
     for (const p of ['equip', 'talents', 'crests', 'polish']) {
@@ -264,19 +267,19 @@ function renderParts(b) {
         const m = b.match[matchKey[p]];
         const row = el('div', { class: 'part-row' },
             el('label', { class: 'switch' }, input, el('i')),
-            el('span', { class: 'part-name' }, PART_LABELS[p]),
+            el('span', { class: 'part-name' }, tr(PART_LABELS[p])),
             el('span', { class: `part-info${m === true ? ' ok' : m === false ? ' bad' : ''}` }, info[p] + (m === true ? ' ✓' : m === false ? ' ✗' : '')));
         if (p === 'equip' && b.equipList && b.equipList.length) {
-            row.append(el('button', { class: 'link', on: { click: () => { equipListOpen = !equipListOpen; renderParts(b); } } }, equipListOpen ? 'скрыть' : 'список'));
+            row.append(el('button', { class: 'link', on: { click: () => { equipListOpen = !equipListOpen; renderParts(b); } } }, equipListOpen ? tr('скрыть') : tr('список')));
         }
         box.append(row);
         if (p === 'equip' && equipListOpen && b.equipList) {
             box.append(el('div', { class: 'equip-list' }, b.equipList.map(it =>
-                el('div', { class: `equip-item${it.equipped ? ' on' : ''}`, title: it.equipped ? 'Надет сейчас' : 'Сейчас не надет' },
+                el('div', { class: `equip-item${it.equipped ? ' on' : ''}`, title: it.equipped ? tr('Надет сейчас') : tr('Сейчас не надет') },
                     el('span', { class: 'slot' }, it.slotName), el('span', { class: 'iname' }, it.name), el('span', { class: 'mark' }, it.equipped ? '✓' : '')))));
         }
     }
-    box.append(el('p', { class: 'hint' }, 'Выключенное мод не трогает при переключении: например, только таланты и улучшения, а экипировку и символы вы меняете сами. Плашки на карточке билда тоже переключаются нажатием.'));
+    box.append(el('p', { class: 'hint' }, tr('Выключенное мод не трогает при переключении: например, только таланты и улучшения, а экипировку и символы вы меняете сами. Плашки на карточке билда тоже переключаются нажатием.')));
 }
 $('ed-up').addEventListener('click', () => editing && send('move', editing, -1));
 $('ed-down').addEventListener('click', () => editing && send('move', editing, 1));
@@ -299,21 +302,21 @@ function keyName(code) {
     return KEYMAP[code] || null;
 }
 const hk = $('ed-hotkey');
-hk.addEventListener('focus', () => { hk.classList.add('listening'); hk.value = 'Нажмите сочетание… (Esc — отмена)'; });
+hk.addEventListener('focus', () => { hk.classList.add('listening'); hk.value = tr('Нажмите сочетание… (Esc — отмена)'); });
 hk.addEventListener('blur', () => { hk.classList.remove('listening'); renderEditor(); });
 hk.addEventListener('keydown', e => {
     e.preventDefault();
     if (e.code === 'Escape') { hk.blur(); return; }
     if (['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight'].includes(e.code)) return;
     const key = keyName(e.code);
-    if (!key) { hk.value = 'Эта клавиша не поддерживается'; return; }
+    if (!key) { hk.value = tr('Эта клавиша не поддерживается'); return; }
     const mods = [];
     if (e.ctrlKey) mods.push('Ctrl');
     if (e.altKey) mods.push('Alt');
     if (e.shiftKey) mods.push('Shift');
     if (e.metaKey) mods.push('Super');
     // Без модификатора разрешаем только F-клавиши и цифровой блок, иначе сломаем набор текста в игре
-    if (!mods.length && !/^(F\d+|num.+)$/.test(key)) { hk.value = 'Добавьте Ctrl, Alt или Shift (или F-клавишу)'; return; }
+    if (!mods.length && !/^(F\d+|num.+)$/.test(key)) { hk.value = tr('Добавьте Ctrl, Alt или Shift (или F-клавишу)'); return; }
     hk.classList.remove('listening');
     send('update', editing, { hotkey: mods.concat(key).join('+') });
     hk.blur();
@@ -330,14 +333,24 @@ function setOpt(key, value) { send('setting', key, value); }
 function buildSettings() {
     for (const row of document.querySelectorAll('#view-settings .row[data-key]')) {
         const { key, type } = row.dataset;
+        if (row.ctl) { row.ctl.remove(); row.ctl = null; }
         let ctl;
+        if (type === 'lang') {
+            const sel = el('select', { on: { change: e => setOpt(key, e.target.value) } },
+                Object.entries(I18N.LANGUAGES).map(([v, label]) => el('option', { value: v }, label)));
+            ctl = el('div', { class: 'ctl' }, sel);
+            row.update = v => { sel.value = v || 'ru'; };
+            row.ctl = ctl;
+            row.append(ctl);
+            continue;
+        }
         if (type === 'bool') {
             const input = el('input', { type: 'checkbox', on: { change: e => setOpt(key, e.target.checked) } });
             ctl = el('label', { class: 'switch' }, input, el('i'));
             row.update = v => { input.checked = !!v; };
         } else if (type === 'range') {
             const out = el('output');
-            const fmt = v => (Number(v) === 0 && row.dataset.zero ? row.dataset.zero : `${v}${row.dataset.unit || ''}`);
+            const fmt = v => (Number(v) === 0 && row.dataset.zero ? tr(row.dataset.zero) : `${v}${tr(row.dataset.unit || '')}`);
             let t = null;
             const input = el('input', {
                 type: 'range', min: row.dataset.min, max: row.dataset.max, step: row.dataset.step,
@@ -350,19 +363,20 @@ function buildSettings() {
             row.update = v => { if (document.activeElement !== input) input.value = v; out.textContent = fmt(input.value); };
         } else if (type === 'seg') {
             const opts = row.dataset.options.split('|').map(x => x.split(':'));
-            const btns = opts.map(([v, label]) => el('button', { on: { click: () => setOpt(key, v) } }, label));
+            const btns = opts.map(([v, label]) => el('button', { on: { click: () => setOpt(key, v) } }, tr(label)));
             ctl = el('div', { class: 'seg' }, btns);
             row.update = v => btns.forEach((b, i) => b.classList.toggle('on', opts[i][0] === v));
         } else if (type === 'select') {
             const opts = row.dataset.options.split('|').map(x => x.split(':'));
-            const sel = el('select', { on: { change: e => setOpt(key, e.target.value) } }, opts.map(([v, label]) => el('option', { value: v }, label)));
+            const sel = el('select', { on: { change: e => setOpt(key, e.target.value) } }, opts.map(([v, label]) => el('option', { value: v }, tr(label))));
             ctl = el('div', { class: 'ctl' }, sel);
             row.update = v => { sel.value = v; };
         } else if (type === 'theme') {
-            const dots = Object.keys(THEMES).map(t => el('button', { class: 'theme-dot', title: THEME_NAMES[t], style: `background:${THEMES[t]}`, on: { click: () => setOpt(key, t) } }));
+            const dots = Object.keys(THEMES).map(t => el('button', { class: 'theme-dot', title: tr(THEME_NAMES[t]), style: `background:${THEMES[t]}`, on: { click: () => setOpt(key, t) } }));
             ctl = el('div', { class: 'themes' }, dots);
             row.update = v => dots.forEach((d, i) => d.classList.toggle('on', Object.keys(THEMES)[i] === v));
         }
+        row.ctl = ctl;
         row.append(ctl);
     }
 }
@@ -370,14 +384,14 @@ function buildSettings() {
 function renderSettings(s) {
     for (const row of document.querySelectorAll('#view-settings .row[data-key]')) if (row.update) row.update(optValue(row.dataset.key));
     const l = s.learned || {};
-    $('learned-info').textContent = `страниц талантов: ${l.epPages || 0}${l.epTemplate ? ' (+шаблон)' : ''}, опций улучшения: ${l.polish || 0}${l.polishTemplate ? ' (+шаблон)' : ''}`;
+    $('learned-info').textContent = tr('страниц талантов: {ep}{ept}, опций улучшения: {polish}{pt}', { ep: l.epPages || 0, ept: l.epTemplate ? tr(' (+шаблон)') : '', polish: l.polish || 0, pt: l.polishTemplate ? tr(' (+шаблон)') : '' });
     $('version').textContent = s.version ? `build-switcher ${s.version}` : '';
     const hkRow = document.querySelector('.row[data-key="hotkeysEnabled"]');
     if (hkRow) hkRow.classList.toggle('hidden', !s.hotkeysAvailable);
 }
 
 $('btn-forget').replaceWith((() => {
-    const b = confirmButton('Забыть', 'Точно?', 'danger', () => send('forget'));
+    const b = confirmButton(tr('Забыть'), tr('Точно?'), 'danger', () => send('forget'));
     b.id = 'btn-forget';
     return b;
 })());
@@ -398,13 +412,13 @@ function renderCompact(s) {
     box.classList.toggle('no-bg', !s.options.buttonBg);
     box.style.setProperty('--isz', `${s.options.iconSize}px`);
     if (!s.builds.length) {
-        box.append(el('div', { class: 'compact-empty' }, s.character ? 'Нет билдов' : 'Зайдите в игру'));
+        box.append(el('div', { class: 'compact-empty' }, s.character ? tr('Нет билдов') : tr('Зайдите в игру')));
     }
     const blocked = s.busy || (s.inCombat && s.options.blockInCombat);
     for (const b of s.builds) {
         box.append(el('button', {
             class: `cbtn${b.active ? ' active' : ''}`,
-            title: `Включить «${b.name}»${b.hotkey ? ` (${b.hotkey})` : ''}${s.inCombat && s.options.blockInCombat ? ' — недоступно в бою' : ''}`,
+            title: tr('Включить «{name}»', { name: b.name }) + (b.hotkey ? ` (${b.hotkey})` : '') + (s.inCombat && s.options.blockInCombat ? tr(' — недоступно в бою') : ''),
             on: { click: () => !blocked && send('apply', b.name) }
         },
         el('div', { class: 'big', style: colorOf(b) ? `color:${colorOf(b)}` : null }, iconEl(b.icon)),
@@ -465,7 +479,42 @@ function render(s) {
     renderToast(s);
 }
 
-handlers.state = render;
+// ---------------------------------------------------------------- язык: статичный текст из index.html
+// Запоминаем исходные (русские) тексты, подсказки и плейсхолдеры, при смене языка подставляем перевод.
+const DYNAMIC_IDS = ['builds', 'alerts', 'now-build', 'now-detail', 'view-compact', 'ed-tabs', 'ed-icons', 'ed-custom', 'ed-colors',
+    'ed-parts', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview'];
+const staticTexts = [], staticAttrs = [];
+function collectStatic() {
+    const dynamic = DYNAMIC_IDS.map(id => $(id)).filter(Boolean);
+    const inDynamic = n => dynamic.some(d => d === n || d.contains(n));
+    for (const node of document.querySelectorAll('body *')) {
+        if (node.closest('svg') || node.tagName === 'SCRIPT' || inDynamic(node)) continue;
+        for (const child of node.childNodes) {
+            if (child.nodeType !== 3 || !child.nodeValue.trim()) continue;
+            const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(child.nodeValue);
+            staticTexts.push({ node: child, lead: m[1], key: m[2], trail: m[3] });
+        }
+        for (const attr of ['title', 'placeholder']) {
+            const v = node.getAttribute(attr);
+            if (v) staticAttrs.push({ node, attr, key: v });
+        }
+    }
+}
+function applyStatic() {
+    for (const t of staticTexts) t.node.nodeValue = t.lead + tr(t.key) + t.trail;
+    for (const a of staticAttrs) a.node.setAttribute(a.attr, tr(a.key));
+    document.documentElement.lang = lang;
+}
+collectStatic();
+
+function setLanguage(next) {
+    if (!I18N.LANGUAGES[next] || next === lang) return;
+    lang = next;
+    applyStatic();
+    buildSettings();
+}
+
+handlers.state = s => { setLanguage((s.options && s.options.language) || 'ru'); render(s); };
 
 // ---------------------------------------------------------------- заголовок и прочее
 $('btn-close').addEventListener('click', () => send('close'));

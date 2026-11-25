@@ -21,6 +21,8 @@ const NOISY = new Set([
 ]);
 const DEBUG_INCOMING = /CREST|_EP_|EPPERK|POLISHING/;
 
+const I18N = require('./ui/i18n.js');
+
 module.exports = function BuildSwitcher(mod) {
     const command = mod.command;
 
@@ -45,6 +47,8 @@ module.exports = function BuildSwitcher(mod) {
 
     const S = () => mod.settings;
     const L = () => S().learned;
+    // Перевод: ключ — русская строка (базовый язык), см. ui/i18n.js
+    const T = (key, params) => I18N.translate(S().language || 'ru', key, params);
 
     function msg(text) { command.message(text); }
     function dbg(text) { if (debug) { mod.log(text); } }
@@ -156,7 +160,7 @@ module.exports = function BuildSwitcher(mod) {
 
     function hook(name, version, opts, cb) {
         const h = mod.tryHook(name, version, opts, cb);
-        if (!h) mod.warn(`Не удалось подписаться на ${name}.${version} — эта часть мода работать не будет.`);
+        if (!h) mod.warn(T('Не удалось подписаться на {hook} — эта часть мода работать не будет.', { hook: `${name}.${version}` }));
         return h;
     }
 
@@ -175,7 +179,7 @@ module.exports = function BuildSwitcher(mod) {
         st.crestFail = true;
         // Набор отклонён сервером при ручном переключении в игре — подскажем причину
         if (!busy) {
-            const text = 'Набор символов не сменился: открыто другое окно взаимодействия (NPC, банк, торговля, крафт…). Закройте его и повторите.';
+            const text = T('Набор символов не сменился: открыто другое окно взаимодействия (NPC, банк, торговля, крафт…). Закройте его и повторите.');
             msg(text);
             setReport(text, 'warn');
         }
@@ -188,7 +192,7 @@ module.exports = function BuildSwitcher(mod) {
         contract = mod.game.contract;
         contract.on('begin', () => changed());
         contract.on('end', () => changed());
-    } catch (e) { mod.warn('tera-game-state: contract недоступен — проверка открытых окон отключена.'); }
+    } catch (e) { mod.warn(T('tera-game-state: contract недоступен — проверка открытых окон отключена.')); }
     function openWindow() { return contract && contract.active ? { type: contract.type } : null; }
 
     // --- экипировка (tera-game-state inventory)
@@ -197,12 +201,13 @@ module.exports = function BuildSwitcher(mod) {
     const GEAR_SLOTS = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 19, 20, 22, 23];
     const SLOT_NAMES = { 1: 'оружие', 3: 'нагрудник', 4: 'перчатки', 5: 'обувь', 6: 'серьга', 7: 'серьга', 8: 'кольцо', 9: 'кольцо',
         10: 'ожерелье', 11: 'бельё', 12: 'голова', 13: 'маска', 19: 'пояс', 20: 'брошь', 22: 'реликвия', 23: 'реликвия' };
+    const slotName = slot => (SLOT_NAMES[slot] ? T(SLOT_NAMES[slot]) : T('слот {n}', { n: slot }));
     let inventory = null;
     try {
         mod.game.initialize('inventory');
         inventory = mod.game.inventory;
         inventory.on('update', () => changed());
-    } catch (e) { mod.warn('tera-game-state: inventory недоступен — переключение экипировки отключено.'); }
+    } catch (e) { mod.warn(T('tera-game-state: inventory недоступен — переключение экипировки отключено.')); }
 
     function equipKnown() { return !!(inventory && inventory.equipment && inventory.equipment.slots && Object.keys(inventory.equipment.slots).length); }
     function equipSnapshot() {
@@ -282,14 +287,14 @@ module.exports = function BuildSwitcher(mod) {
             const ours = equipPresetPacket(parsed.items, parsed.crystals);
             const same = ours && ours.slice(payloadOffset(code)).equals(data.slice(payloadOffset(code)));
             dbg(`C_CHANGE_EQUIP_PRESET (client): ${parsed.items.length} предметов, ${parsed.crystals.length} кристаллов; сборка мода ${same ? 'совпадает' : 'ОТЛИЧАЕТСЯ'}: ${data.toString('hex')}`);
-            if (!same) mod.warn(`C_CHANGE_EQUIP_PRESET от клиента не совпал со сборкой мода: ${data.toString('hex')}`);
+            if (!same) mod.warn(T('C_CHANGE_EQUIP_PRESET от клиента не совпал со сборкой мода: {hex}', { hex: data.toString('hex') }));
         } catch (e) { dbg(`C_CHANGE_EQUIP_PRESET parse error: ${e.message}`); }
     });
 
     async function applyEquip(saved, delay) {
-        if (!equipKnown()) return { text: 'экипировка: состояние неизвестно (откройте инвентарь)', warn: true };
+        if (!equipKnown()) return { text: T('экипировка: состояние неизвестно (откройте инвентарь)'), warn: true };
         const diff = equipDiff(saved);
-        if (!diff.length) return { text: 'экипировка: уже' };
+        if (!diff.length) return { text: T('экипировка: уже') };
 
         const missing = diff.filter(slot => !inventory.dbids[saved[slot].dbid] && !Object.values(inventory.dbids).some(x => String(x.dbid) === saved[slot].dbid));
         const want = {};
@@ -308,7 +313,7 @@ module.exports = function BuildSwitcher(mod) {
         const crystals = [];
         for (const it of items) for (const id of it.crystals) crystals.push({ slot: it.slot, id });
         const pkt = equipPresetPacket(items, crystals);
-        if (!pkt) return { text: 'экипировка: пакет C_CHANGE_EQUIP_PRESET неизвестен в этой версии', warn: true };
+        if (!pkt) return { text: T('экипировка: пакет C_CHANGE_EQUIP_PRESET неизвестен в этой версии'), warn: true };
 
         const reply = new Promise(resolve => {
             let done = false;
@@ -322,11 +327,11 @@ module.exports = function BuildSwitcher(mod) {
         await sleep(delay);
 
         const left = equipDiff(saved).filter(x => !missing.includes(x));
-        const names = slots => slots.map(sl => saved[sl].name || SLOT_NAMES[sl] || `слот ${sl}`).join(', ');
+        const names = slots => slots.map(sl => saved[sl].name || slotName(sl)).join(', ');
         let text;
-        if (!left.length) text = `экипировка: ок (${diff.length - missing.length})`;
-        else text = `экипировка: сервер не надел ${names(left)}${ok ? '' : ' — включите /8 build debug, переоденьтесь вручную и пришлите лог'}`;
-        if (missing.length) text += `; нет в сумке: ${names(missing)}`;
+        if (!left.length) text = T('экипировка: ок ({n})', { n: diff.length - missing.length });
+        else text = T('экипировка: сервер не надел {items}', { items: names(left) }) + (ok ? '' : T(' — включите /8 build debug, переоденьтесь вручную и пришлите лог'));
+        if (missing.length) text += T('; нет в сумке: {items}', { items: names(missing) });
         return { text, warn: !!(left.length || missing.length) };
     }
 
@@ -474,19 +479,19 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     function saveBuild(name) {
-        if (!name) { msg('Укажите имя: build save tank'); return null; }
+        if (!name) { msg(T('Укажите имя: build save tank')); return null; }
         const c = charData(true);
-        if (!c) { msg('Персонаж не определён — зайдите в игру.'); return null; }
+        if (!c) { msg(T('Персонаж не определён — зайдите в игру.')); return null; }
 
         const b = { savedAt: Date.now() };
         const missing = [];
-        if (st.crestsKnown) b.crests = enabledCrests(); else missing.push('символы');
-        if (st.epPreset !== null) b.epPreset = st.epPreset; else missing.push('таланты');
+        if (st.crestsKnown) b.crests = enabledCrests(); else missing.push(T('символы'));
+        if (st.epPreset !== null) b.epPreset = st.epPreset; else missing.push(T('таланты'));
         if (st.polishKnown) {
             b.polish = {};
             for (const [group, id] of st.polish) if (id) b.polish[group] = id;
-        } else missing.push('улучшение умений');
-        if (equipKnown()) b.equip = equipSnapshot(); else missing.push('экипировка');
+        } else missing.push(T('улучшение умений'));
+        if (equipKnown()) b.equip = equipSnapshot(); else missing.push(T('экипировка'));
 
         const old = c.builds[name];
         if (old) for (const k of ['icon', 'color', 'hotkey']) if (old[k] !== undefined) b[k] = old[k];
@@ -495,9 +500,9 @@ module.exports = function BuildSwitcher(mod) {
         c.builds[name] = b;
         save();
         changed();
-        msg(`Билд «${name}» сохранён: экипировка ${b.equip ? Object.keys(b.equip).length : '—'}, символов ${b.crests ? b.crests.length : '—'}, страница талантов ${b.epPreset !== undefined ? b.epPreset + 1 : '—'}, опций улучшения ${b.polish ? Object.keys(b.polish).length : '—'}.`);
+        msg(T('Билд «{name}» сохранён: экипировка {equip}, символов {crests}, страница талантов {page}, опций улучшения {polish}.', { name, equip: b.equip ? Object.keys(b.equip).length : '—', crests: b.crests ? b.crests.length : '—', page: b.epPreset !== undefined ? b.epPreset + 1 : '—', polish: b.polish ? Object.keys(b.polish).length : '—' }));
         if (missing.length)
-            msg(`Не сохранено (сервер ещё не прислал данные): ${missing.join(', ')}. Откройте соответствующие окна или перезайдите на персонажа и сохраните снова.`);
+            msg(T('Не сохранено (сервер ещё не прислал данные): {list}. Откройте соответствующие окна или перезайдите на персонажа и сохраните снова.', { list: missing.join(', ') }));
         reportUnknownPackets(name, b);
         return missing;
     }
@@ -506,27 +511,27 @@ module.exports = function BuildSwitcher(mod) {
     function reportUnknownPackets(name, b) {
         const hints = [];
         if (b.epPreset !== undefined && !epPacketFor(b.epPreset))
-            hints.push(`страница талантов ${b.epPreset}: один раз переключитесь на неё в окне талантов`);
+            hints.push(T('страница талантов {page}: один раз переключитесь на неё в окне талантов', { page: b.epPreset + 1 }));
         if (b.polish) {
             for (const [g, id] of Object.entries(b.polish))
-                if (!polishPacketFor(+g, id)) hints.push(`улучшение ${id}: один раз выберите эту опцию в окне «Улучшение умений»`);
+                if (!polishPacketFor(+g, id)) hints.push(T('улучшение {id}: один раз выберите эту опцию в окне «Улучшение умений»', { id }));
         }
         if (hints.length)
-            msg(`Для «${name}» мод ещё не знает пакеты: ${hints.join('; ')}.`);
+            msg(T('Для «{name}» мод ещё не знает пакеты: {list}.', { name, list: hints.join('; ') }));
     }
 
     async function applyBuild(name, source = 'chat') {
         const say = text => { if (source === 'chat' || S().chatReports || (source === 'hotkey' && !gui.isOpen())) msg(text); };
         const deny = text => { say(text); setReport(text, 'error'); };
-        if (!S().enabled) return deny('Мод выключен (build on).');
-        if (busy) return deny('Подождите, переключение уже идёт.');
+        if (!S().enabled) return deny(T('Мод выключен (build on).'));
+        if (busy) return deny(T('Подождите, переключение уже идёт.'));
         const b = getBuild(name);
-        if (!b) return deny(`Билд «${name}» не найден. Сохраните: build save ${name}`);
-        if (S().blockInCombat && mod.game.me.inCombat) return deny('В бою переключать нельзя.');
-        if (mod.game.me.alive === false) return deny('Персонаж мёртв.');
+        if (!b) return deny(T('Билд «{name}» не найден. Сохраните: build save {name}', { name }));
+        if (S().blockInCombat && mod.game.me.inCombat) return deny(T('В бою переключать нельзя.'));
+        if (mod.game.me.alive === false) return deny(T('Персонаж мёртв.'));
         const win = openWindow();
         if (win && S().crestsWhenBusy === 'abort' && b.crests && partOn(b, 'crests') && st.crestsKnown && !sameSet(enabledCrests(), b.crests))
-            return deny('Открыто окно взаимодействия — символы сейчас не сменить. Закройте его и повторите.');
+            return deny(T('Открыто окно взаимодействия — символы сейчас не сменить. Закройте его и повторите.'));
 
         busy = true;
         changed();
@@ -535,19 +540,19 @@ module.exports = function BuildSwitcher(mod) {
         let warn = false;
         try {
             const active = PARTS.filter(p => partOn(b, p));
-            if (!active.length) report.push('в билде не выбрано, что переключать');
+            if (!active.length) report.push(T('в билде не выбрано, что переключать'));
 
             // 1. Таланты
             if (b.epPreset !== undefined && b.epPreset !== null && partOn(b, 'talents')) {
-                if (st.epPreset === b.epPreset) report.push('таланты: уже');
+                if (st.epPreset === b.epPreset) report.push(T('таланты: уже'));
                 else {
                     const pkt = epPacketFor(b.epPreset);
-                    if (!pkt) report.push(`таланты: пакет неизвестен (переключите страницу ${b.epPreset} вручную один раз)`);
+                    if (!pkt) report.push(T('таланты: пакет неизвестен (переключите страницу {page} вручную один раз)', { page: b.epPreset + 1 }));
                     else {
                         const reply = waitFor('TTB_S_LOAD_EP_PAGE', 1, 3000);
                         mod.toServer(pkt);
                         const ev = await reply;
-                        report.push(ev && ev.activePreset === b.epPreset ? 'таланты: ок' : 'таланты: сервер не подтвердил');
+                        report.push(T(ev && ev.activePreset === b.epPreset ? 'таланты: ок' : 'таланты: сервер не подтвердил'));
                     }
                     await sleep(delay);
                 }
@@ -555,10 +560,10 @@ module.exports = function BuildSwitcher(mod) {
 
             // 2. Символы (можно отключить для билда: build glyphs <имя> off)
             if (b.crests && partOn(b, 'crests')) {
-                if (!st.crestsKnown) report.push('символы: состояние неизвестно (откройте окно умений)');
-                else if (sameSet(enabledCrests(), b.crests)) report.push('символы: уже');
+                if (!st.crestsKnown) report.push(T('символы: состояние неизвестно (откройте окно умений)'));
+                else if (sameSet(enabledCrests(), b.crests)) report.push(T('символы: уже'));
                 else if (openWindow() && S().crestsWhenBusy === 'skip') {
-                    report.push('символы: пропущены (открыто окно взаимодействия)');
+                    report.push(T('символы: пропущены (открыто окно взаимодействия)'));
                     warn = true;
                 } else {
                     const target = b.crests.filter(id => st.crests.has(id));
@@ -587,10 +592,10 @@ module.exports = function BuildSwitcher(mod) {
                         await sleep(delay);
                     }
                     const ok = sameSet(enabledCrests(), target);
-                    let text = `символы: ${ok ? 'ок' : 'не применились — закройте окна взаимодействия и повторите'}`;
-                    if (ok && (busyWindow || listRejected)) { text += ' (открыто окно — переставлены по одному)'; warn = true; }
+                    let text = T(ok ? 'символы: ок' : 'символы: не применились — закройте окна взаимодействия и повторите');
+                    if (ok && (busyWindow || listRejected)) { text += T(' (открыто окно — переставлены по одному)'); warn = true; }
                     if (!ok) warn = true;
-                    if (unknown) text += ` (${unknown} не изучено)`;
+                    if (unknown) text += T(' ({n} не изучено)', { n: unknown });
                     report.push(text);
                 }
             }
@@ -611,18 +616,18 @@ module.exports = function BuildSwitcher(mod) {
                     const group = +g;
                     if (st.polishKnown && st.polish.get(group) === id) { already++; continue; }
                     const pkt = polishPacketFor(group, id);
-                    if (!pkt) { failed.push(`${id} (пакет неизвестен)`); continue; }
+                    if (!pkt) { failed.push(T('{id} (пакет неизвестен)', { id })); continue; }
                     const reply = waitFor('S_RP_SKILL_POLISHING_CHANGE_OPTION', 'raw', 2500);
                     mod.toServer(pkt);
                     const resp = await reply;
-                    if (resp) { st.polish.set(group, id); changed++; } else failed.push(`${id} (нет ответа)`);
+                    if (resp) { st.polish.set(group, id); changed++; } else failed.push(T('{id} (нет ответа)', { id }));
                     await sleep(delay);
                 }
                 const parts = [];
-                if (changed) parts.push(`изменено ${changed}`);
-                if (already) parts.push(`уже ${already}`);
-                if (failed.length) parts.push(`ошибка: ${failed.join(', ')}`);
-                report.push(`улучшение: ${parts.join(', ') || '—'}`);
+                if (changed) parts.push(T('изменено {n}', { n: changed }));
+                if (already) parts.push(T('уже {n}', { n: already }));
+                if (failed.length) parts.push(T('ошибка: {list}', { list: failed.join(', ') }));
+                report.push(T('улучшение: {list}', { list: parts.join(', ') || '—' }));
 
                 // Сверяемся с сервером, если умеем запросить список
                 const listPkt = buildPacket('C_RQ_SKILL_POLISHING_LIST', L().polishListRequest);
@@ -635,7 +640,7 @@ module.exports = function BuildSwitcher(mod) {
 
             // 4. Экипировка (последней: самый тяжёлый шаг)
             if (b.equip && Object.keys(b.equip).length && partOn(b, 'equip')) {
-                if (!inventory) report.push('экипировка: недоступна');
+                if (!inventory) report.push(T('экипировка: недоступна'));
                 else {
                     const r = await applyEquip(b.equip, delay);
                     report.push(r.text);
@@ -645,12 +650,12 @@ module.exports = function BuildSwitcher(mod) {
 
             const c = charData(true);
             if (c) { c.active = name; save(); }
-            say(`Билд «${name}»: ${report.join(' | ')}`);
-            setReport(`«${name}»: ${report.join(' | ')}`, warn ? 'warn' : 'ok');
+            say(T('Билд «{name}»: {report}', { name, report: report.join(' | ') }));
+            setReport(T('«{name}»: {report}', { name, report: report.join(' | ') }), warn ? 'warn' : 'ok');
         } catch (e) {
             mod.error(e);
-            say(`Ошибка при переключении: ${e.message}`);
-            setReport(`Ошибка: ${e.message}`, 'error');
+            say(T('Ошибка при переключении: {err}', { err: e.message }));
+            setReport(T('Ошибка: {err}', { err: e.message }), 'error');
         } finally {
             busy = false;
             changed();
@@ -668,7 +673,7 @@ module.exports = function BuildSwitcher(mod) {
 
     const NAME_RE = /^[\wа-яё-]{1,24}$/i;
     const core = {
-        mod, msg, save,
+        mod, msg, save, T,
         settings: S,
         charName,
         isBusy: () => busy,
@@ -681,8 +686,8 @@ module.exports = function BuildSwitcher(mod) {
                 const m = buildMatches(b);
                 const vals = Object.values(m);
                 const missing = [];
-                if (b.epPreset !== undefined && partOn(b, 'talents') && !epPacketFor(b.epPreset)) missing.push(`страница талантов ${b.epPreset + 1}`);
-                if (b.polish && partOn(b, 'polish')) for (const [g, id] of Object.entries(b.polish)) if (!polishPacketFor(+g, id)) missing.push(`улучшение ${id}`);
+                if (b.epPreset !== undefined && partOn(b, 'talents') && !epPacketFor(b.epPreset)) missing.push(T('страница талантов {page}', { page: b.epPreset + 1 }));
+                if (b.polish && partOn(b, 'polish')) for (const [g, id] of Object.entries(b.polish)) if (!polishPacketFor(+g, id)) missing.push(T('улучшение {id}', { id }));
                 return {
                     name,
                     icon: b.icon || (/tank|танк|def/i.test(name) ? 'shield' : (/dd|дд|dps|дпс|dmg/i.test(name) ? 'sword' : 'star')),
@@ -691,7 +696,7 @@ module.exports = function BuildSwitcher(mod) {
                     useCrests: partOn(b, 'crests'),
                     parts: Object.fromEntries(PARTS.map(p => [p, partOn(b, p)])),
                     equip: b.equip ? Object.keys(b.equip).length : null,
-                    equipList: b.equip ? Object.entries(b.equip).map(([slot, it]) => ({ slot: +slot, slotName: SLOT_NAMES[slot] || `слот ${slot}`, name: it.name || `предмет ${it.id}`, equipped: !!(equipKnown() && inventory.equipment.slots[slot] && String(inventory.equipment.slots[slot].dbid) === it.dbid) })) : [],
+                    equipList: b.equip ? Object.entries(b.equip).map(([slot, it]) => ({ slot: +slot, slotName: slotName(slot), name: it.name || T('предмет {id}', { id: it.id }), equipped: !!(equipKnown() && inventory.equipment.slots[slot] && String(inventory.equipment.slots[slot].dbid) === it.dbid) })) : [],
                     crests: b.crests ? b.crests.length : null,
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
@@ -737,9 +742,9 @@ module.exports = function BuildSwitcher(mod) {
         renameBuild(from, to) {
             const c = charData();
             to = String(to || '').trim();
-            if (!c || !c.builds[from]) return 'Билд не найден.';
-            if (!NAME_RE.test(to)) return 'Имя: буквы, цифры, «-» и «_», до 24 символов.';
-            if (to !== from && c.builds[to]) return `Билд «${to}» уже есть.`;
+            if (!c || !c.builds[from]) return T('Билд не найден.');
+            if (!NAME_RE.test(to)) return T('Имя: буквы, цифры, «-» и «_», до 24 символов.');
+            if (to !== from && c.builds[to]) return T('Билд «{name}» уже есть.', { name: to });
             const entries = Object.entries(c.builds).map(([k, v]) => [k === from ? to : k, v]);
             c.builds = Object.fromEntries(entries);
             save(); changed();
@@ -796,17 +801,17 @@ module.exports = function BuildSwitcher(mod) {
 
     async function showBuild(name) {
         const b = getBuild(name);
-        if (!b) return msg(`Билд «${name}» не найден.`);
+        if (!b) return msg(T('Билд «{name}» не найден.', { name }));
         const m = buildMatches(b);
-        const mark = v => v === null ? '?' : (v ? 'совпадает' : 'отличается');
-        msg(`«${name}»: страница талантов ${b.epPreset !== undefined ? b.epPreset : '—'} [${mark(m.ep)}]`);
+        const mark = v => v === null ? '?' : T(v ? 'совпадает' : 'отличается');
+        msg(T('«{name}»: страница талантов {page} [{mark}]', { name, page: b.epPreset !== undefined ? b.epPreset + 1 : '—', mark: mark(m.ep) }));
         if (b.crests) {
             const names = await Promise.all(b.crests.map(id => lookupName('crest', id)));
-            msg(`Символы (${b.crests.length}) [${mark(m.crests)}]: ${names.join(', ')}`);
+            msg(T('Символы ({n}) [{mark}]: {list}', { n: b.crests.length, mark: mark(m.crests), list: names.join(', ') }));
         }
         if (b.polish) {
             const lines = await Promise.all(Object.entries(b.polish).map(async ([g, id]) => `${g}: ${await lookupName('polish', id)}`));
-            msg(`Улучшение умений [${mark(m.polish)}]: ${lines.join('; ') || '—'}`);
+            msg(T('Улучшение умений [{mark}]: {list}', { mark: mark(m.polish), list: lines.join('; ') || '—' }));
         }
         reportUnknownPackets(name, b);
     }
@@ -814,13 +819,13 @@ module.exports = function BuildSwitcher(mod) {
     function status() {
         const c = charData();
         const builds = c ? Object.keys(c.builds) : [];
-        msg(`Персонаж: ${charName() || '—'} | талант-страница: ${st.epPreset !== null ? st.epPreset : '?'} | символов вкл.: ${st.crestsKnown ? enabledCrests().length : '?'} | улучшений: ${st.polishKnown ? [...st.polish.values()].filter(Boolean).length : '?'}`);
+        msg(T('Персонаж: {char} | страница талантов: {page} | символов вкл.: {crests} | улучшений: {polish}', { char: charName() || '—', page: st.epPreset !== null ? st.epPreset + 1 : '?', crests: st.crestsKnown ? enabledCrests().length : '?', polish: st.polishKnown ? [...st.polish.values()].filter(Boolean).length : '?' }));
         const matching = builds.filter(n => {
             const m = buildMatches(c.builds[n]);
             return Object.values(m).every(v => v !== false) && Object.values(m).some(v => v === true);
         });
-        msg(`Билды: ${builds.length ? builds.join(', ') : 'нет'}${matching.length ? ` | сейчас надет: ${matching.join(', ')}` : ''}`);
-        msg(`Выучено пакетов: страниц талантов ${Object.keys(L().epPages).length}${L().epTemplate ? ' (+шаблон)' : ''}, опций улучшения ${Object.keys(L().polish).length}${L().polishTemplate ? ' (+шаблон)' : ''}, запрос списка: ${L().polishListRequest ? 'да' : 'нет'}`);
+        msg(T('Билды: {list}', { list: builds.length ? builds.join(', ') : T('нет') }) + (matching.length ? T(' | сейчас надет: {list}', { list: matching.join(', ') }) : ''));
+        msg(T('Выучено пакетов: страниц талантов {ep}, опций улучшения {polish}, запрос списка: {list}', { ep: Object.keys(L().epPages).length + (L().epTemplate ? T(' (+шаблон)') : ''), polish: Object.keys(L().polish).length + (L().polishTemplate ? T(' (+шаблон)') : ''), list: T(L().polishListRequest ? 'да' : 'нет') }));
     }
 
     function toggleDebug() {
@@ -837,13 +842,13 @@ module.exports = function BuildSwitcher(mod) {
             mod.unhook(sniffHook);
             sniffHook = null;
         }
-        msg(`Отладка ${debug ? 'включена: клиентские пакеты пишутся в чат и в лог toolbox' : 'выключена'}.`);
+        msg(T(debug ? 'Отладка включена: клиентские пакеты пишутся в чат и в лог toolbox.' : 'Отладка выключена.'));
     }
 
     function help() {
-        msg('build save <имя> — сохранить текущие символы, таланты и улучшения');
-        msg('build <имя> — переключиться (также: ' + S().shortcuts.join(', ') + ')');
-        msg('build list | show <имя> | del <имя> | part <имя> equip|talents|crests|polish on|off | gui | status | debug | forget | on | off');
+        msg(T('build save <имя> — сохранить текущие экипировку, символы, таланты и улучшения'));
+        msg(T('build <имя> — переключиться (также: {list})', { list: S().shortcuts.join(', ') }));
+        msg(T('build list | show <имя> | del <имя> | part <имя> equip|talents|crests|polish on|off | gui | lang ru|en | status | debug | forget | on | off'));
     }
 
     // ------------------------------------------------------------------ команды
@@ -855,42 +860,50 @@ module.exports = function BuildSwitcher(mod) {
             case 'load': case 'use': applyBuild(args[0]); break;
             case 'list': {
                 const c = charData();
-                msg(`Билды ${charName() || ''}: ${c && Object.keys(c.builds).length ? Object.keys(c.builds).join(', ') : 'нет'}`);
+                msg(T('Билды {char}: {list}', { char: charName() || '', list: c && Object.keys(c.builds).length ? Object.keys(c.builds).join(', ') : T('нет') }));
                 break;
             }
             case 'show': showBuild(args[0]); break;
             case 'del': case 'delete': {
                 const c = charData();
-                if (c && c.builds[args[0]]) { delete c.builds[args[0]]; save(); changed(); msg(`Билд «${args[0]}» удалён.`); }
-                else msg('Нет такого билда.');
+                if (c && c.builds[args[0]]) { delete c.builds[args[0]]; save(); changed(); msg(T('Билд «{name}» удалён.', { name: args[0] })); }
+                else msg(T('Нет такого билда.'));
                 break;
             }
             case 'status': status(); break;
             case 'gui': case 'ui': openGui(); break;
+            case 'lang': case 'language': case 'язык': {
+                const lang = (args[0] || '').toLowerCase();
+                if (!I18N.LANGUAGES[lang]) { msg(T('Пример: build lang en (языки: {list})', { list: Object.keys(I18N.LANGUAGES).join(', ') })); break; }
+                S().language = lang;
+                save(); changed();
+                msg(T('Язык интерфейса: {lang}.', { lang: I18N.LANGUAGES[lang] }));
+                break;
+            }
             case 'part': {
                 // build part <имя> <equip|talents|crests|polish> on|off
                 const b = getBuild(args[0]);
                 const map = { equip: 'equip', экип: 'equip', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
                 const part = map[(args[1] || '').toLowerCase()];
-                if (!b || !part) { msg('Пример: build part tank equip off (части: equip, talents, crests, polish)'); break; }
+                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, talents, crests, polish)')); break; }
                 core.updateBuild(args[0], { parts: { [part]: (args[2] || '').toLowerCase() !== 'off' } });
-                msg(`«${args[0]}»: ${part} ${partOn(b, part) ? 'вкл' : 'выкл'}.`);
+                msg(T('«{name}»: {part} {state}.', { name: args[0], part, state: T(partOn(b, part) ? 'вкл' : 'выкл') }));
                 break;
             }
             case 'glyphs': {
                 const b = getBuild(args[0]);
-                if (!b) { msg('Нет такого билда.'); break; }
+                if (!b) { msg(T('Нет такого билда.')); break; }
                 core.updateBuild(args[0], { parts: { crests: (args[1] || '').toLowerCase() !== 'off' } });
-                msg(`Символы для «${args[0]}» ${partOn(b, 'crests') ? 'переключаются' : 'не трогаются'}.`);
+                msg(T(partOn(b, 'crests') ? 'Символы для «{name}» переключаются.' : 'Символы для «{name}» не трогаются.', { name: args[0] }));
                 break;
             }
             case 'debug': toggleDebug(); break;
             case 'forget':
                 core.forgetLearned();
-                msg('Выученные пакеты забыты. Переключите всё вручную один раз, чтобы мод выучил их заново.');
+                msg(T('Выученные пакеты забыты. Переключите всё вручную один раз, чтобы мод выучил их заново.'));
                 break;
-            case 'on': S().enabled = true; save(); msg('Мод включён.'); break;
-            case 'off': S().enabled = false; save(); msg('Мод выключен.'); break;
+            case 'on': S().enabled = true; save(); msg(T('Мод включён.')); break;
+            case 'off': S().enabled = false; save(); msg(T('Мод выключен.')); break;
             default: applyBuild(sub); break;
         }
     };
@@ -898,7 +911,7 @@ module.exports = function BuildSwitcher(mod) {
     command.add(['build', 'билд'], handler);
     for (const shortcut of S().shortcuts || []) {
         try { command.add(shortcut, () => applyBuild(shortcut)); }
-        catch (e) { mod.warn(`Команда ${shortcut} уже занята другим модом — используйте "build ${shortcut}".`); }
+        catch (e) { mod.warn(T('Команда {cmd} уже занята другим модом — используйте "build {cmd}".', { cmd: shortcut })); }
     }
 
     // ------------------------------------------------------------------ hot-reload

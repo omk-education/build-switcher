@@ -60,6 +60,7 @@
         <div class="row" data-key="gui.idleOpacity" data-type="range" data-min="15" data-max="100" data-step="5" data-unit="%"><span>Когда курсор не над окном<small>Окно становится прозрачнее, пока вы играете</small></span></div>
         <div class="row" data-key="gui.zoom" data-type="range" data-min="70" data-max="150" data-step="5" data-unit="%"><span>Масштаб интерфейса</span></div>
         <div class="row" data-key="gui.theme" data-type="theme"><span>Тема</span></div>
+        <div class="row" data-key="language" data-type="lang"><span>Язык<small>Language</small></span></div>
     </section>
 
     <section class="group">
@@ -97,8 +98,8 @@
 
     <details class="help">
         <summary>Символы и «Наборы» 1–5</summary>
-        <p>Номер «Набора» хранит только клиент игры. Сервер получает лишь список символов, поэтому новый список записывается в «Набор», выбранный сейчас.
-        Держите выбранным свободный «Набор» (например, 5): мод будет менять только его.</p>
+        <p>Номер «Набора» хранит только клиент игры. Сервер получает лишь список символов, поэтому новый список записывается в «Набор», выбранный сейчас.</p>
+        <p>Держите выбранным свободный «Набор» (например, 5): мод будет менять только его.</p>
         <p>Если открыто окно взаимодействия (NPC, банк, торговля, крафт), сервер не меняет весь набор сразу. Что делать в этом случае, выбирается выше.</p>
     </details>
     <p class="version" id="version"></p>
@@ -152,6 +153,7 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<script src="i18n.js"></script>
 <script src="icons.js"></script>
 <script src="app.js"></script>
 </body>
