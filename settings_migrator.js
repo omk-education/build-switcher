@@ -19,6 +19,9 @@ const DefaultSettings = {
     //   'single' — ставить символы по одному (сервер так разрешает), 'skip' — не трогать символы, 'abort' — не переключать билд
     crestsWhenBusy: 'single',
 
+    // Вызывать помощника активного билда при входе в игру
+    summonOnLogin: true,
+
     // Глобальные горячие клавиши билдов (только TeraToolbox.exe)
     hotkeysEnabled: true,
 
@@ -32,6 +35,7 @@ const DefaultSettings = {
         barOnTop: true,       // поверх всех окон (игра — «Окно» или «Окно без рамки»)
         barNoFocus: true,     // не забирать фокус у игры при нажатии
         barLocked: false,     // закрепить панель: перетаскивание отключено
+        hideUnfocused: false, // прятать панель, когда окно игры неактивно
         opacity: 100,         // непрозрачность, %
         idleOpacity: 100,     // непрозрачность, когда курсор не над панелью, %
         iconSize: 56,         // размер кнопок, px

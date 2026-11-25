@@ -10,6 +10,7 @@ A mod for [TERA Toolbox](https://github.com/tera-private-toolbox/tera-toolbox) (
 | Talents (page 1–5) | `C_LOAD_EP_PAGE`. The mod learns this packet when you switch the page yourself in the talent window. |
 | Equipment (weapon, armor, accessories, belt, brooch) | The mod remembers your equipped items and puts them on with a single `C_CHANGE_EQUIP_PRESET` packet, like an equipment preset in the client. If an item is not in your bag (e.g. it is in the bank), the mod tells you. |
 | Costumes (head, face, weapon skin, costume, back, footprints) | A separate build part, applied with the same packet. Switch them together with equipment or on their own. |
+| Servant (pet or partner) | The mod remembers the summoned servant and summons it with `C_REQUEST_SPAWN_SERVANT` if it is not out. The servant of the last applied build is also summoned when you enter the game. |
 | Skill advancement (options 1/2/3) | `C_RQ_SKILL_POLISHING_CHANGE_OPTION`. The mod learns this packet when you select an option yourself. |
 
 The packet structures for talents and skill advancement are not described in tera-data, so the mod **learns** them: it stores the packet the client sends and later sends the same one. Toolbox recalculates the integrity hash for padded packets itself.
@@ -74,20 +75,26 @@ You can also do all of this in the mod window: set things up in game, type a nam
 | `/8 build lock` | lock or unlock the button bar |
 | `/8 build gui` | open the manager window |
 | `/8 build lang ru` / `en` | interface and message language |
-| `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `costume`, `talents`, `crests`, `polish` |
+| `/8 build part <name> <part> on/off` | enable or disable a part of a build: `equip`, `costume`, `servant`, `talents`, `crests`, `polish` |
 | `/8 build debug` | toggle packet logging (chat and Toolbox log) |
 | `/8 build forget` | forget learned packets |
 | `/8 build on` / `off` | enable / disable the mod |
 
 ## What to switch (build parts)
 
-Each build has five parts: **Equipment**, **Costumes**, **Talents**, **Glyphs** and **Advancements** (skill advancement). Any of them can be disabled, and the mod will leave it alone:
+Each build has six parts: **Equipment**, **Costumes**, **Servant**, **Talents**, **Glyphs** and **Advancements** (skill advancement). Any of them can be disabled, and the mod will leave it alone:
 - in the window: build editor (✎) → "What to switch", or simply click a chip on the build card (struck through means disabled);
-- in chat: `/8 build part tank equip off` (parts: `equip`, `costume`, `talents`, `crests`, `polish`; `on` or `off`).
+- in chat: `/8 build part tank equip off` (parts: `equip`, `costume`, `servant`, `talents`, `crests`, `polish`; `on` or `off`).
 
 Example: you change gear and glyphs yourself, and the mod only switches talents and advancements.
 
-"Overwrite with current" saves all parts again; enabled parts, icon and hotkey stay the same.
+"Overwrite with current" saves all parts again; enabled parts, icon, hotkey and bar visibility stay the same.
+
+## Servant
+
+Summon the servant (pet or partner) you want before saving a build: the mod stores it with the build. When you switch to the build, the mod summons that servant if it is not out yet.
+
+When you enter the game, the mod summons the servant of the last applied build (⚙ → "Switching" → "Summon the servant when entering the game"). If another mod (e.g. auto-pet) has already summoned it, the mod does not summon it again. To keep mods from taking turns, leave summoning on login enabled in only one of them.
 
 ## Mod windows
 
@@ -95,6 +102,8 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 
 **Button bar**: a small window over the game with just the build buttons. It appears when you enter the game; hide and show it with `/8 build bar`.
 - Clicking a button switches to that build. The active build is highlighted in gold. The button tooltip shows its hotkey.
+- The bar shows builds with "Show on the button bar" enabled (a switch in the build editor). Hidden builds are marked "not on bar" in the manager window.
+- "Hide when the game is inactive": the bar disappears when you switch to another window or minimize the game, and comes back when you return. While the manager window is active, the bar stays visible.
 - By default the bar does not take focus from the game, so you can keep playing right after clicking.
 - Dragging: press the mouse button anywhere on the bar (even on a build button) and move. A move shorter than 5 pixels counts as a normal click. The position is remembered.
 - To avoid moving the bar by accident, lock it: the lock on the bar, ⚙ → "Lock the bar" or `/8 build lock`. A locked bar does not move, while its buttons work as usual.
@@ -120,9 +129,9 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 
 | Section | What you can change |
 |---|---|
-| Button bar | show on login, always on top, keep the game focused, lock the bar, button size, button background (on/off, color, opacity), button border, labels, transparent bar, row or column, opacity and idle opacity |
+| Button bar | show on login, always on top, keep the game focused, hide when the game is inactive, lock the bar, button size, button background (on/off, color, opacity), button border, labels, transparent bar, row or column, opacity and idle opacity |
 | Manager window | open on login, always on top, scale, theme (TERA, Graphite, Crimson, Emerald, Light), language |
-| Switching | no switching in combat, behavior while an interaction window is open, delay between packets, hotkeys |
+| Switching | summon the servant on login, no switching in combat, behavior while an interaction window is open, delay between packets, hotkeys |
 | Notifications | how long to show results, also post to chat, confirm delete and overwrite |
 | Data | forget learned packets, reset window positions and opacity |
 

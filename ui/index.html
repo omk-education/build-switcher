@@ -42,7 +42,7 @@
         <input id="new-name" maxlength="24" placeholder="Имя нового билда (например, pvp)" spellcheck="false">
         <button id="btn-save" class="primary">Сохранить текущее</button>
     </section>
-    <p class="hint">«Сохранить текущее» запоминает надетую экипировку, символы, страницу талантов и опции «Улучшения умений». Что из этого переключать, выбирается в редакторе билда (✎) или нажатием на плашки.</p>
+    <p class="hint">«Сохранить текущее» запоминает надетую экипировку и костюмы, вызванного помощника, символы, страницу талантов и опции «Улучшения умений». Что из этого переключать, выбирается в редакторе билда (✎) или нажатием на плашки.</p>
 </main>
 
 <!-- ======================= Настройки ======================= -->
@@ -57,6 +57,7 @@
         <div class="row" data-key="gui.barOnLogin" data-type="bool"><span>Показывать при входе в игру<small>Скрыть и вернуть: кнопка панели в заголовке или /8 build bar</small></span></div>
         <div class="row" data-key="gui.barOnTop" data-type="bool"><span>Поверх всех окон<small>Игра должна быть в режиме «Окно» или «Окно без рамки»</small></span></div>
         <div class="row" data-key="gui.barNoFocus" data-type="bool"><span>Не забирать фокус у игры<small>После нажатия на кнопку игра остаётся активной. Панель перезапустится</small></span></div>
+        <div class="row" data-key="gui.hideUnfocused" data-type="bool"><span>Скрывать, когда игра неактивна<small>Панель исчезает, если вы переключились в другое окно или свернули игру, и появляется, когда вы вернётесь</small></span></div>
         <div class="row" data-key="gui.barLocked" data-type="bool"><span>Закрепить панель<small>Панель нельзя сдвинуть мышью. Также: замок на панели или /8 build lock</small></span></div>
         <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
         <div class="row" data-key="gui.buttonBg" data-type="bool"><span>Фон кнопок<small>Плитка под иконкой. Без неё остаются только иконки</small></span></div>
@@ -84,6 +85,7 @@
         <div class="row" data-key="blockInCombat" data-type="bool"><span>Не переключать в бою</span></div>
         <div class="row" data-key="crestsWhenBusy" data-type="select" data-options="single:По одному|skip:Не трогать символы|abort:Отменить переключение"><span>Если открыто окно взаимодействия<small>NPC, банк, торговля, крафт: сервер не меняет весь набор символов сразу</small></span></div>
         <div class="row" data-key="delay" data-type="range" data-min="200" data-max="1500" data-step="50" data-unit=" мс"><span>Пауза между пакетами<small>Больше — надёжнее, меньше — быстрее</small></span></div>
+        <div class="row" data-key="summonOnLogin" data-type="bool"><span>Вызывать помощника при входе в игру<small>Помощник последнего включённого билда. Если другой мод (например, auto-pet) уже вызвал его, повторно не вызывается</small></span></div>
         <div class="row" data-key="hotkeysEnabled" data-type="bool"><span>Горячие клавиши билдов<small>Назначаются в редакторе билда (✎)</small></span></div>
     </section>
 
@@ -118,6 +120,11 @@
             <div class="preview" id="ed-preview"></div>
             <input id="ed-name" maxlength="24" spellcheck="false">
             <button class="win" id="ed-close" title="Готово"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></button>
+        </div>
+
+        <div class="part-row showbar-row">
+            <label class="switch"><input type="checkbox" id="ed-showbar"><i></i></label>
+            <span class="part-name">Показывать на панели кнопок</span>
         </div>
 
         <div class="ed-label">Что переключать</div>

@@ -36,11 +36,12 @@ function render(s) {
     box.style.setProperty('--tile-a2', String(Math.min(1, a * 0.75)));
     box.classList.toggle('no-border', o.buttonBorder === false);
 
-    if (!s.builds.length) {
-        box.append(el('button', { class: 'bar-empty', on: { click: () => send('openManager') } }, s.character ? tr('Нет билдов') : tr('Зайдите в игру')));
+    const shown = s.builds.filter(b => b.showOnBar !== false);
+    if (!shown.length) {
+        box.append(el('button', { class: 'bar-empty', on: { click: () => send('openManager') } }, !s.character ? tr('Зайдите в игру') : (s.builds.length ? tr('Все билды скрыты с панели') : tr('Нет билдов'))));
     }
     const blocked = s.busy || (s.inCombat && o.blockInCombat);
-    for (const b of s.builds) {
+    for (const b of shown) {
         const title = [tr('Включить «{name}»', { name: b.name })];
         if (b.hotkey) title.push(b.hotkey);
         if (s.inCombat && o.blockInCombat) title.push(tr('недоступно в бою'));

@@ -28,7 +28,7 @@ for (const file of ['index.js', 'lib/gui.js', 'ui/app.js', 'ui/bar.js', 'ui/comm
 
 // Таблицы, которые переводятся при выводе
 const app = fs.readFileSync(path.join(ROOT, 'ui/app.js'), 'utf8');
-for (const name of ['PART_LABELS', 'THEME_NAMES']) {
+for (const name of ['PART_LABELS', 'THEME_NAMES', 'SERVANT_TYPES']) {
     const block = new RegExp(`const ${name} = \\{([^}]*)\\}`).exec(app);
     if (block) for (const m of block[1].matchAll(/'([^']*)'/g)) add(m[1], `ui/app.js ${name}`);
 }

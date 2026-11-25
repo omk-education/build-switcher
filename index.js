@@ -350,6 +350,89 @@ module.exports = function BuildSwitcher(mod) {
         return { texts, warn };
     }
 
+    // --- помощники (питомцы и партнёры)
+    // Свои вызванные помощники: gameId -> { id, dbid, type, name }. Сервер сообщает о вызове
+    // S_REQUEST_SPAWN_SERVANT (ownerId — наш gameId) и об уходе S_REQUEST_DESPAWN_SERVANT.
+    const servants = new Map();
+    let spawnCounter = 0;
+    hook('S_REQUEST_SPAWN_SERVANT', 4, watch, e => {
+        if (!mod.game.me.is(e.ownerId)) return;
+        servants.set(String(e.gameId), { id: e.id, dbid: String(e.dbid), type: e.type, name: e.name || '' });
+        changed();
+    });
+    hook('S_REQUEST_DESPAWN_SERVANT', 1, watch, e => {
+        if (servants.delete(String(e.gameId))) changed();
+    });
+    // Счётчик из пакета клиента — продолжаем его, как клиент
+    hook('C_REQUEST_SPAWN_SERVANT', 'raw', fromClient, (code, data) => {
+        const off = payloadOffset(code);
+        if (data.length >= off + 20) {
+            spawnCounter = data.readInt32LE(off);
+            dbg(`C_REQUEST_SPAWN_SERVANT (client): counter ${spawnCounter}, servant ${data.readInt32LE(off + 8)}, dbid ${data.readUInt32LE(off + 12)}`);
+        }
+    });
+    mod.game.on('leave_game', () => { servants.clear(); spawnCounter = 0; });
+
+    const servantSaved = () => [...servants.values()].map(x => ({ id: x.id, dbid: x.dbid, type: x.type, name: x.name }));
+    const servantOut = dbid => [...servants.values()].some(x => x.dbid === dbid);
+
+    // C_REQUEST_SPAWN_SERVANT: int32 счётчик, int32 служебное (клиент шлёт меняющееся число,
+    // сервер его не проверяет — так же делает мод auto-pet), int32 id помощника, int32 dbid, int32 0
+    function spawnServantPacket(sv) {
+        const code = opcode('C_REQUEST_SPAWN_SERVANT');
+        if (code === undefined) return null;
+        const off = payloadOffset(code);
+        const buf = Buffer.alloc(off + 20);
+        buf.writeUInt16LE(buf.length, 0);
+        buf.writeUInt16LE(code, 2);
+        buf.writeInt32LE(++spawnCounter, off);
+        buf.writeInt32LE(0, off + 4);
+        buf.writeInt32LE(sv.id | 0, off + 8);
+        buf.writeUInt32LE(Number(BigInt(sv.dbid) & 0xffffffffn), off + 12);
+        buf.writeInt32LE(0, off + 16);
+        return buf;
+    }
+
+    // Вызывает сохранённых помощников, которых сейчас нет рядом
+    async function applyServants(saved, delay) {
+        const todo = saved.filter(sv => !servantOut(sv.dbid));
+        if (!todo.length) return { text: T('помощник: уже'), warn: false };
+        let ok = 0;
+        const failed = [];
+        for (const sv of todo) {
+            const pkt = spawnServantPacket(sv);
+            if (!pkt) return { text: T('помощник: пакет C_REQUEST_SPAWN_SERVANT неизвестен в этой версии'), warn: true };
+            const reply = waitFor('S_REQUEST_SPAWN_SERVANT', 4, 3000, e => mod.game.me.is(e.ownerId) && String(e.dbid) === sv.dbid);
+            mod.toServer(pkt);
+            if (await reply) ok++; else failed.push(sv.name || sv.id);
+            await sleep(delay);
+        }
+        if (!failed.length) return { text: T('помощник: ок ({n})', { n: ok }), warn: false };
+        return { text: T('помощник: не вызван {list}', { list: failed.join(', ') }), warn: true };
+    }
+
+    // При входе в игру вызываем помощника активного билда (один раз, после первой загрузки мира)
+    let loginSummon = false;
+    mod.game.on('enter_game', () => { loginSummon = true; });
+    mod.game.on('leave_loading_screen', () => {
+        if (!loginSummon) return;
+        loginSummon = false;
+        if (!S().enabled || !S().summonOnLogin) return;
+        mod.setTimeout(async () => {
+            const c = charData();
+            const b = c && c.active && c.builds[c.active];
+            if (!b || !partOn(b, 'servant') || !b.servants || !b.servants.length || busy) return;
+            if (b.servants.every(sv => servantOut(sv.dbid))) return; // уже рядом (например, вызвал другой мод)
+            busy = true;
+            try {
+                const r = await applyServants(b.servants, Math.max(200, S().delay | 0));
+                const text = T('Вход в игру, билд «{name}»: {report}', { name: c.active, report: r.text });
+                if (S().chatReports || r.warn) msg(text);
+                setReport(text, r.warn ? 'warn' : 'ok');
+            } finally { busy = false; changed(); }
+        }, 2500);
+    });
+
     // --- таланты
     const epInfoVersion = mod.majorPatchVersion >= 105 ? 3 : (mod.majorPatchVersion >= 96 ? 2 : 1);
     hook('S_LOAD_EP_INFO', epInfoVersion, watch, e => {
@@ -477,7 +560,7 @@ module.exports = function BuildSwitcher(mod) {
 
     // Какие части билда переключать: equip — экипировка, talents — таланты, crests — символы (изученные умения),
     // polish — улучшение умений. Старые билды хранили только useCrests.
-    const PARTS = ['equip', 'costume', 'talents', 'crests', 'polish'];
+    const PARTS = ['equip', 'costume', 'servant', 'talents', 'crests', 'polish'];
     function partOn(b, part) {
         if (b.parts && b.parts[part] !== undefined) return !!b.parts[part];
         if (part === 'crests') return b.useCrests !== false;
@@ -485,9 +568,10 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     function buildMatches(b) {
-        const res = { equip: null, costume: null, crests: null, ep: null, polish: null };
+        const res = { equip: null, costume: null, servant: null, crests: null, ep: null, polish: null };
         if (b.equip && partOn(b, 'equip') && equipKnown()) res.equip = equipDiff(b.equip).length === 0;
         if (b.costume && Object.keys(b.costume).length && partOn(b, 'costume') && equipKnown()) res.costume = equipDiff(b.costume).length === 0;
+        if (b.servants && b.servants.length && partOn(b, 'servant')) res.servant = b.servants.every(sv => servantOut(sv.dbid));
         if (b.crests && partOn(b, 'crests') && st.crestsKnown) res.crests = sameSet(enabledCrests(), b.crests);
         if (b.epPreset !== undefined && b.epPreset !== null && partOn(b, 'talents') && st.epPreset !== null) res.ep = st.epPreset === b.epPreset;
         if (b.polish && partOn(b, 'polish') && st.polishKnown) res.polish = Object.entries(b.polish).every(([g, id]) => st.polish.get(+g) === id);
@@ -508,9 +592,10 @@ module.exports = function BuildSwitcher(mod) {
             for (const [group, id] of st.polish) if (id) b.polish[group] = id;
         } else missing.push(T('улучшение умений'));
         if (equipKnown()) { b.equip = equipSnapshot(GEAR_SLOTS); b.costume = equipSnapshot(COSTUME_SLOTS); } else missing.push(T('экипировка'));
+        b.servants = servantSaved();
 
         const old = c.builds[name];
-        if (old) for (const k of ['icon', 'color', 'hotkey']) if (old[k] !== undefined) b[k] = old[k];
+        if (old) for (const k of ['icon', 'color', 'hotkey', 'showOnBar']) if (old[k] !== undefined) b[k] = old[k];
         b.parts = {};
         for (const part of PARTS) b.parts[part] = old ? partOn(old, part) : true;
         c.builds[name] = b;
@@ -667,6 +752,13 @@ module.exports = function BuildSwitcher(mod) {
                 }
             }
 
+            // 5. Помощник
+            if (b.servants && b.servants.length && partOn(b, 'servant')) {
+                const r = await applyServants(b.servants, delay);
+                report.push(r.text);
+                if (r.warn) warn = true;
+            }
+
             const c = charData(true);
             if (c) { c.active = name; save(); }
             say(T('Билд «{name}»: {report}', { name, report: report.join(' | ') }));
@@ -722,6 +814,8 @@ module.exports = function BuildSwitcher(mod) {
                     equipList: itemList(b.equip),
                     costume: b.costume && Object.keys(b.costume).length ? Object.keys(b.costume).length : null,
                     costumeList: itemList(b.costume),
+                    servants: b.servants ? b.servants.map(sv => ({ name: sv.name || T('помощник {id}', { id: sv.id }), type: sv.type, out: servantOut(sv.dbid) })) : null,
+                    showOnBar: b.showOnBar !== false,
                     crests: b.crests ? b.crests.length : null,
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
@@ -740,6 +834,7 @@ module.exports = function BuildSwitcher(mod) {
                 current: {
                     equip: equipKnown() ? GEAR_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
                     costume: equipKnown() ? COSTUME_SLOTS.filter(sl => inventory.equipment.slots[sl]).length : null,
+                    servants: [...servants.values()].map(x => x.name || x.id),
                     epPreset: st.epPreset,
                     crests: st.crestsKnown ? enabledCrests().length : null,
                     polish: st.polishKnown ? [...st.polish.values()].filter(Boolean).length : null
@@ -789,7 +884,7 @@ module.exports = function BuildSwitcher(mod) {
         updateBuild(name, patch) {
             const b = getBuild(name);
             if (!b) return;
-            for (const k of ['icon', 'color', 'hotkey']) if (k in patch) b[k] = patch[k];
+            for (const k of ['icon', 'color', 'hotkey', 'showOnBar']) if (k in patch) b[k] = patch[k];
             if ('useCrests' in patch) patch.parts = Object.assign({}, patch.parts, { crests: !!patch.useCrests });
             if (patch.parts) {
                 if (!b.parts) b.parts = Object.fromEntries(PARTS.map(p => [p, partOn(b, p)]));
@@ -874,7 +969,7 @@ module.exports = function BuildSwitcher(mod) {
     function help() {
         msg(T('build save <имя> — сохранить текущие экипировку, символы, таланты и улучшения'));
         msg(T('build <имя> — переключиться (также: {list})', { list: S().shortcuts.join(', ') }));
-        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off'));
+        msg(T('build list | show <имя> | del <имя> | part <имя> equip|costume|servant|talents|crests|polish on|off | gui | bar | lock | lang ru|en | status | debug | forget | on | off'));
     }
 
     // ------------------------------------------------------------------ команды
@@ -911,9 +1006,9 @@ module.exports = function BuildSwitcher(mod) {
             case 'part': {
                 // build part <имя> <equip|talents|crests|polish> on|off
                 const b = getBuild(args[0]);
-                const map = { equip: 'equip', экип: 'equip', costume: 'costume', костюмы: 'costume', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
+                const map = { equip: 'equip', экип: 'equip', costume: 'costume', костюмы: 'costume', servant: 'servant', pet: 'servant', помощник: 'servant', talents: 'talents', таланты: 'talents', crests: 'crests', glyphs: 'crests', символы: 'crests', polish: 'polish', улучшения: 'polish' };
                 const part = map[(args[1] || '').toLowerCase()];
-                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, costume, talents, crests, polish)')); break; }
+                if (!b || !part) { msg(T('Пример: build part tank equip off (части: equip, costume, servant, talents, crests, polish)')); break; }
                 core.updateBuild(args[0], { parts: { [part]: (args[2] || '').toLowerCase() !== 'off' } });
                 msg(T('«{name}»: {part} {state}.', { name: args[0], part, state: T(partOn(b, part) ? 'вкл' : 'выкл') }));
                 break;

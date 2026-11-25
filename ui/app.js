@@ -13,8 +13,9 @@ const CUSTOM_TAB = 'Свои';
 let iconTab = ICON_GROUPS[0].name;
 let lastToastTime = 0, toastTimer = null;
 
-const PART_LABELS = { equip: 'Экипировка', costume: 'Костюмы', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
-const PART_ORDER = ['equip', 'costume', 'talents', 'crests', 'polish'];
+const PART_LABELS = { equip: 'Экипировка', costume: 'Костюмы', servant: 'Помощник', talents: 'Таланты', crests: 'Символы', polish: 'Улучшения' };
+const PART_ORDER = ['equip', 'costume', 'servant', 'talents', 'crests', 'polish'];
+const SERVANT_TYPES = { 0: 'питомец', 1: 'партнёр' };
 const partOn = (b, p) => !b.parts || b.parts[p] !== false;
 function togglePart(b, p) { send('update', b.name, { parts: { [p]: !partOn(b, p) } }); }
 const pageText = p => (p === null || p === undefined ? '?' : tr('стр. {n}', { n: p + 1 }));
@@ -86,10 +87,12 @@ function renderMain(s) {
                 el('div', { class: 'card-head' },
                     el('span', { class: 'name' }, b.name),
                     b.active ? el('span', { class: 'tag tag-active' }, tr('включён')) : null,
-                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null),
+                    b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null,
+                    b.showOnBar === false ? el('span', { class: 'tag tag-hidden', title: tr('Не показывается на панели кнопок') }, tr('не на панели')) : null),
                 el('div', { class: 'chips' },
                     b.equip !== null && b.equip !== undefined ? chip(tr('Экипировка {n}', { n: b.equip }), b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
                     b.costume ? chip(tr('Костюмы {n}', { n: b.costume }), b.match.costume, !partOn(b, 'costume'), () => togglePart(b, 'costume')) : null,
+                    b.servants && b.servants.length ? chip(tr('Помощник: {name}', { name: b.servants.map(x => x.name).join(', ') }), b.match.servant, !partOn(b, 'servant'), () => togglePart(b, 'servant')) : null,
                     b.epPreset !== null ? chip(tr('Таланты {page}', { page: pageText(b.epPreset) }), b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
                     b.crests !== null ? chip(tr('Символы {n}', { n: b.crests }), b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
                     b.polish !== null ? chip(tr('Улучшения {n}', { n: b.polish }), b.match.polish, !partOn(b, 'polish'), () => togglePart(b, 'polish'))  : null),
@@ -164,6 +167,7 @@ function renderEditor() {
         ? tr('Горячие клавиши работают только в TeraToolbox.exe (с интерфейсом).')
         : (!state.options.hotkeysEnabled ? tr('Горячие клавиши выключены в настройках.') : tr('Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.'));
     renderParts(b);
+    $('ed-showbar').checked = b.showOnBar !== false;
 
     const actions = $('ed-overwrite').parentNode;
     const oldOw = $('ed-overwrite'), oldDel = $('ed-delete');
@@ -222,6 +226,7 @@ sheetBody.addEventListener('dragleave', e => { if (e.target === sheetBody) sheet
 sheetBody.addEventListener('drop', e => { e.preventDefault(); sheetBody.classList.remove('drop'); uploadSvgFiles(e.dataTransfer.files); });
 
 $('ed-close').addEventListener('click', closeEditor);
+$('ed-showbar').addEventListener('change', e => editing && send('update', editing, { showOnBar: e.target.checked }));
 $('editor').addEventListener('click', e => { if (e.target === $('editor')) closeEditor(); });
 $('ed-name').addEventListener('keydown', e => { if (e.key === 'Enter') closeEditor(); if (e.key === 'Escape') { $('ed-name').value = editing; closeEditor(); } });
 const listOpen = {};
@@ -231,12 +236,16 @@ function renderParts(b) {
     const info = {
         equip: b.equip ? tr('{n} предм.', { n: b.equip }) : tr('не сохранена'),
         costume: b.costume ? tr('{n} предм.', { n: b.costume }) : tr('не сохранены'),
+        servant: b.servants && b.servants.length ? b.servants.map(x => x.name).join(', ') : tr('не был вызван при сохранении'),
         talents: b.epPreset !== null ? pageText(b.epPreset) : tr('не сохранены'),
         crests: b.crests !== null ? tr('{n} шт.', { n: b.crests }) : tr('не сохранены'),
         polish: b.polish !== null ? tr('{n} опц.', { n: b.polish }) : tr('не сохранены')
     };
-    const matchKey = { equip: 'equip', costume: 'costume', talents: 'ep', crests: 'crests', polish: 'polish' };
-    const lists = { equip: b.equipList, costume: b.costumeList };
+    const matchKey = { equip: 'equip', costume: 'costume', servant: 'servant', talents: 'ep', crests: 'crests', polish: 'polish' };
+    const lists = {
+        equip: b.equipList, costume: b.costumeList,
+        servant: (b.servants || []).map(x => ({ slotName: tr(SERVANT_TYPES[x.type] || 'помощник'), name: x.name, equipped: x.out }))
+    };
     for (const p of PART_ORDER) {
         const input = el('input', { type: 'checkbox', checked: partOn(b, p), on: { change: () => togglePart(b, p) } });
         const m = b.match[matchKey[p]];
@@ -251,7 +260,7 @@ function renderParts(b) {
         box.append(row);
         if (list && listOpen[p]) {
             box.append(el('div', { class: 'equip-list' }, list.map(it =>
-                el('div', { class: `equip-item${it.equipped ? ' on' : ''}`, title: it.equipped ? tr('Надет сейчас') : tr('Сейчас не надет') },
+                el('div', { class: `equip-item${it.equipped ? ' on' : ''}`, title: p === 'servant' ? (it.equipped ? tr('Сейчас рядом') : tr('Сейчас не вызван')) : (it.equipped ? tr('Надет сейчас') : tr('Сейчас не надет')) },
                     el('span', { class: 'slot' }, it.slotName), el('span', { class: 'iname' }, it.name), el('span', { class: 'mark' }, it.equipped ? '✓' : '')))));
         }
     }
