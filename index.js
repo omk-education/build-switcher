@@ -420,7 +420,7 @@ module.exports = function BuildSwitcher(mod) {
         if (!S().enabled || !S().summonOnLogin) return;
         mod.setTimeout(async () => {
             const c = charData();
-            const b = c && c.active && c.builds[c.active];
+            const b = c && c.active && getBuild(c.active);
             if (!b || !partOn(b, 'servant') || !b.servants || !b.servants.length || busy) return;
             if (b.servants.every(sv => servantOut(sv.dbid))) return; // уже рядом (например, вызвал другой мод)
             busy = true;
@@ -587,9 +587,44 @@ module.exports = function BuildSwitcher(mod) {
         if (!chars[name] && create) chars[name] = { builds: {} };
         return chars[name] || null;
     }
-    function getBuild(name) {
+    // Билды бывают двух видов:
+    //   для персонажа — settings.characters[имя].builds[билд], видны только этому персонажу;
+    //   общие — settings.shared.builds[билд]: имя, иконка, цвет, клавиша, показ на панели и части общие,
+    //   а содержимое (экипировка, символы, таланты…) у каждого персонажа своё: perChar[имя персонажа].
+    const SNAP_KEYS = ['savedAt', 'crests', 'epPreset', 'polish', 'equip', 'costume', 'servants', 'cardPreset'];
+    const COMMON_KEYS = ['icon', 'color', 'hotkey', 'showOnBar', 'parts', 'useCrests'];
+    function sharedData() {
+        if (!S().shared || typeof S().shared !== 'object') S().shared = { builds: {} };
+        if (!S().shared.builds) S().shared.builds = {};
+        return S().shared;
+    }
+    // Все билды, видимые текущему персонажу: сначала свои, затем общие
+    function entries() {
+        const out = [];
+        const c = charData(), char = charName();
+        if (c) for (const [name, b] of Object.entries(c.builds)) out.push({ name, scope: 'char', common: b, data: b });
+        for (const [name, b] of Object.entries(sharedData().builds))
+            out.push({ name, scope: 'shared', common: b, data: char && b.perChar ? b.perChar[char] || null : null });
+        return out;
+    }
+    function entry(name) { return entries().find(e => e.name === name) || null; }
+    // Билд в «плоском» виде для чтения (для общего — общие поля + содержимое текущего персонажа)
+    function resolve(e) {
+        if (!e) return null;
+        if (e.scope === 'char') return e.common;
+        const r = { shared: true, unsaved: !e.data };
+        for (const k of COMMON_KEYS) if (e.common[k] !== undefined) r[k] = e.common[k];
+        if (e.data) for (const k of SNAP_KEYS) if (e.data[k] !== undefined) r[k] = e.data[k];
+        return r;
+    }
+    function getBuild(name) { return resolve(entry(name)); }
+    // Имя занято? Для общего билда проверяем всех персонажей, для билда персонажа — его и общие
+    function nameTaken(name, scope, except = null) {
+        if (name === except) return false;
+        if (sharedData().builds[name]) return true;
+        if (scope === 'shared') return Object.values(S().characters || {}).some(c => c && c.builds && c.builds[name]);
         const c = charData();
-        return c && c.builds[name] ? c.builds[name] : null;
+        return !!(c && c.builds[name]);
     }
 
     function enabledCrests() {
@@ -639,11 +674,21 @@ module.exports = function BuildSwitcher(mod) {
         b.servants = servantSaved();
         if (cardPreset !== null) b.cardPreset = cardPreset; else missing.push(T('карты'));
 
-        const old = c.builds[name];
-        if (old) for (const k of ['icon', 'color', 'hotkey', 'showOnBar']) if (old[k] !== undefined) b[k] = old[k];
-        b.parts = {};
-        for (const part of PARTS) b.parts[part] = old ? partOn(old, part) : true;
-        c.builds[name] = b;
+        const ex = entry(name);
+        if (ex && ex.scope === 'shared') {
+            // Общий билд: обновляем только содержимое этого персонажа
+            if (!ex.common.perChar) ex.common.perChar = {};
+            const snap = {};
+            for (const k of SNAP_KEYS) if (b[k] !== undefined) snap[k] = b[k];
+            ex.common.perChar[charName()] = snap;
+        } else {
+            if (!ex && nameTaken(name, 'char')) { msg(T('Билд «{name}» уже есть.', { name })); return null; }
+            const old = ex ? ex.common : null;
+            if (old) for (const k of ['icon', 'color', 'hotkey', 'showOnBar']) if (old[k] !== undefined) b[k] = old[k];
+            b.parts = {};
+            for (const part of PARTS) b.parts[part] = old ? partOn(old, part) : true;
+            c.builds[name] = b;
+        }
         save();
         changed();
         msg(T('Билд «{name}» сохранён: экипировка {equip}, символов {crests}, страница талантов {page}, опций улучшения {polish}.', { name, equip: b.equip ? Object.keys(b.equip).length : '—', crests: b.crests ? b.crests.length : '—', page: b.epPreset !== undefined ? b.epPreset + 1 : '—', polish: b.polish ? Object.keys(b.polish).length : '—' }));
@@ -673,6 +718,7 @@ module.exports = function BuildSwitcher(mod) {
         if (busy) return deny(T('Подождите, переключение уже идёт.'));
         const b = getBuild(name);
         if (!b) return deny(T('Билд «{name}» не найден. Сохраните: build save {name}', { name }));
+        if (b.unsaved) return deny(T('Общий билд «{name}» ещё не сохранён для этого персонажа: настройте всё в игре и нажмите «Перезаписать текущим» (или /8 build save {name}).', { name }));
         if (S().blockInCombat && mod.game.me.inCombat) return deny(T('В бою переключать нельзя.'));
         if (mod.game.me.alive === false) return deny(T('Персонаж мёртв.'));
         const win = openWindow();
@@ -849,8 +895,8 @@ module.exports = function BuildSwitcher(mod) {
         saveBuild,
         setReport,
         state() {
-            const c = charData();
-            const builds = c ? Object.entries(c.builds).map(([name, b]) => {
+            const builds = entries().map(e => {
+                const name = e.name, b = resolve(e);
                 const m = buildMatches(b);
                 const vals = Object.values(m);
                 const missing = [];
@@ -874,11 +920,14 @@ module.exports = function BuildSwitcher(mod) {
                     epPreset: b.epPreset !== undefined ? b.epPreset : null,
                     polish: b.polish ? Object.keys(b.polish).length : null,
                     match: m,
-                    active: vals.every(v => v !== false) && vals.some(v => v === true),
+                    active: !b.unsaved && vals.every(v => v !== false) && vals.some(v => v === true),
                     missing,
-                    savedAt: b.savedAt || null
+                    savedAt: b.savedAt || null,
+                    scope: e.scope,
+                    unsaved: !!b.unsaved,
+                    sharedChars: e.scope === 'shared' ? Object.keys(e.common.perChar || {}) : null
                 };
-            }) : [];
+            });
             const win = openWindow();
             return {
                 character: charName() || null,
@@ -902,43 +951,80 @@ module.exports = function BuildSwitcher(mod) {
                 }
             };
         },
-        builds() { const c = charData(); return c ? c.builds : {}; },
+        // Видимые билды текущего персонажа: имя -> билд для чтения
+        builds() { return Object.fromEntries(entries().map(e => [e.name, resolve(e)])); },
+        // Все хранимые билды (для чистки иконок): общие поля всех персонажей и общих билдов
         allBuilds() {
             const out = [];
             for (const c of Object.values(S().characters || {})) for (const b of Object.values(c.builds || {})) out.push(b);
+            for (const b of Object.values(sharedData().builds)) out.push(b);
             return out;
         },
         deleteBuild(name) {
-            const c = charData();
-            if (!c || !c.builds[name]) return false;
-            delete c.builds[name];
+            const e = entry(name);
+            if (!e) return false;
+            if (e.scope === 'shared') delete sharedData().builds[name];
+            else delete charData().builds[name];
             save(); changed();
             return true;
         },
         renameBuild(from, to) {
-            const c = charData();
+            const e = entry(from);
             to = String(to || '').trim();
-            if (!c || !c.builds[from]) return T('Билд не найден.');
+            if (!e) return T('Билд не найден.');
             if (!NAME_RE.test(to)) return T('Имя: буквы, цифры, «-» и «_», до 24 символов.');
-            if (to !== from && c.builds[to]) return T('Билд «{name}» уже есть.', { name: to });
-            const entries = Object.entries(c.builds).map(([k, v]) => [k === from ? to : k, v]);
-            c.builds = Object.fromEntries(entries);
+            if (to !== from && nameTaken(to, e.scope)) return T('Билд «{name}» уже есть.', { name: to });
+            const holder = e.scope === 'shared' ? sharedData() : charData();
+            holder.builds = Object.fromEntries(Object.entries(holder.builds).map(([k, v]) => [k === from ? to : k, v]));
+            // Активный билд у персонажей — по имени
+            for (const c of Object.values(S().characters || {})) if (c && c.active === from && (e.scope === 'shared' || c === charData())) c.active = to;
             save(); changed();
             return null;
         },
+        // Порядок — внутри своего вида (сначала билды персонажа, потом общие)
         moveBuild(name, dir) {
-            const c = charData();
-            if (!c || !c.builds[name]) return;
-            const keys = Object.keys(c.builds);
+            const e = entry(name);
+            if (!e) return;
+            const holder = e.scope === 'shared' ? sharedData() : charData();
+            const keys = Object.keys(holder.builds);
             const i = keys.indexOf(name), j = i + (dir < 0 ? -1 : 1);
             if (j < 0 || j >= keys.length) return;
             [keys[i], keys[j]] = [keys[j], keys[i]];
-            c.builds = Object.fromEntries(keys.map(k => [k, c.builds[k]]));
+            holder.builds = Object.fromEntries(keys.map(k => [k, holder.builds[k]]));
             save(); changed();
         },
+        // Сделать билд общим или только для этого персонажа. Возвращает текст ошибки или null.
+        setScope(name, scope) {
+            const e = entry(name);
+            if (!e) return T('Билд не найден.');
+            if (e.scope === scope) return null;
+            const pick = (src, keys) => { const o = {}; for (const k of keys) if (src[k] !== undefined) o[k] = src[k]; return o; };
+            if (scope === 'shared') {
+                const other = Object.entries(S().characters || {}).find(([cn, c]) => cn !== charName() && c && c.builds && c.builds[name]);
+                if (other) return T('У персонажа {char} уже есть свой билд «{name}». Переименуйте один из них.', { char: other[0], name });
+                const common = pick(e.common, COMMON_KEYS);
+                common.perChar = { [charName()]: pick(e.common, SNAP_KEYS) };
+                sharedData().builds[name] = common;
+                delete charData().builds[name];
+            } else {
+                // Общий -> у каждого персонажа, где он сохранён, становится своим билдом
+                const per = e.common.perChar || {};
+                const clash = Object.keys(per).find(cn => S().characters[cn] && S().characters[cn].builds && S().characters[cn].builds[name]);
+                if (clash) return T('У персонажа {char} уже есть свой билд «{name}». Переименуйте один из них.', { char: clash, name });
+                const chars = Object.keys(per).length ? Object.keys(per) : [charName()];
+                for (const cn of chars) {
+                    if (!S().characters[cn]) S().characters[cn] = { builds: {} };
+                    S().characters[cn].builds[name] = Object.assign(pick(e.common, COMMON_KEYS), per[cn] || {});
+                }
+                delete sharedData().builds[name];
+            }
+            save(); changed();
+            return null;
+        },
         updateBuild(name, patch) {
-            const b = getBuild(name);
-            if (!b) return;
+            const e = entry(name);
+            if (!e) return;
+            const b = e.common; // общие поля (для общего билда — у всех персонажей)
             for (const k of ['icon', 'color', 'hotkey', 'showOnBar']) if (k in patch) b[k] = patch[k];
             if ('useCrests' in patch) patch.parts = Object.assign({}, patch.parts, { crests: !!patch.useCrests });
             if (patch.parts) {
@@ -993,11 +1079,12 @@ module.exports = function BuildSwitcher(mod) {
     }
 
     function status() {
-        const c = charData();
-        const builds = c ? Object.keys(c.builds) : [];
+        const builds = entries().map(e => e.name);
         msg(T('Персонаж: {char} | страница талантов: {page} | символов вкл.: {crests} | улучшений: {polish}', { char: charName() || '—', page: st.epPreset !== null ? st.epPreset + 1 : '?', crests: st.crestsKnown ? enabledCrests().length : '?', polish: st.polishKnown ? [...st.polish.values()].filter(Boolean).length : '?' }));
         const matching = builds.filter(n => {
-            const m = buildMatches(c.builds[n]);
+            const b = getBuild(n);
+            if (b.unsaved) return false;
+            const m = buildMatches(b);
             return Object.values(m).every(v => v !== false) && Object.values(m).some(v => v === true);
         });
         msg(T('Билды: {list}', { list: builds.length ? builds.join(', ') : T('нет') }) + (matching.length ? T(' | сейчас надет: {list}', { list: matching.join(', ') }) : ''));
@@ -1035,14 +1122,13 @@ module.exports = function BuildSwitcher(mod) {
             case 'save': saveBuild(args[0]); break;
             case 'load': case 'use': applyBuild(args[0]); break;
             case 'list': {
-                const c = charData();
-                msg(T('Билды {char}: {list}', { char: charName() || '', list: c && Object.keys(c.builds).length ? Object.keys(c.builds).join(', ') : T('нет') }));
+                const names = entries().map(e => e.name + (e.scope === 'shared' ? '*' : ''));
+                msg(T('Билды {char}: {list}', { char: charName() || '', list: names.length ? names.join(', ') : T('нет') }));
                 break;
             }
             case 'show': showBuild(args[0]); break;
             case 'del': case 'delete': {
-                const c = charData();
-                if (c && c.builds[args[0]]) { delete c.builds[args[0]]; save(); changed(); msg(T('Билд «{name}» удалён.', { name: args[0] })); }
+                if (core.deleteBuild(args[0])) msg(T('Билд «{name}» удалён.', { name: args[0] }));
                 else msg(T('Нет такого билда.'));
                 break;
             }

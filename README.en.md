@@ -91,6 +91,15 @@ Example: you change gear and glyphs yourself, and the mod only switches talents 
 
 "Overwrite with current" saves all parts again; enabled parts, icon, hotkey and bar visibility stay the same.
 
+## Character or shared build
+
+The build editor (✎) has a "Build" switch:
+
+- **This character** (default): the build and its button exist only on this character. Other characters do not see it on their bar.
+- **Shared**: the button is shown on every character. Name, icon, color, hotkey, "Show on the bar" and the part selection are common, while the content (gear, costumes, servant, card preset, glyphs, talents, skill advancement) is saved by each character separately: log in, set everything up in game and press ✎ → "Overwrite with current". Until the build is saved for the character, the button is dimmed and the card explains what to do.
+
+Switching a shared build back to "This character" turns it into a separate build on every character that had it saved. Nothing is lost. `/8 build list` marks shared builds with `*`.
+
 ## Servant
 
 Summon the servant (pet or partner) you want before saving a build: the mod stores it with the build. When you switch to the build, the mod summons that servant if it is not out yet.
@@ -161,7 +170,7 @@ The mod changes only what differs. If the glyphs are already right, it leaves th
 
 Almost everything is configured in the window. The only thing worth editing by hand is `shortcuts`: short chat commands (default `["tank", "dd"]`). If you named your builds differently, put their names here.
 
-Builds are stored per character. Learned packets are shared.
+Character builds are stored in `characters`, shared builds in `shared` (with per-character content). Learned packets are shared.
 
 ## If something does not switch
 

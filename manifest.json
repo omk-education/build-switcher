@@ -1,19 +1,19 @@
 {
     "files": {
-        "README.en.md": "9805a2af97030e6a15ae552fd0b0882665901faffd55bb2e47331c799260921c",
-        "README.md": "e7675fdf3f2ccc7dc5e4d26c05a60231e940d09cd2c4aad52ca97c3992c78a74",
-        "index.js": "f6f049e98ce651338c7a645da9a459169f085e5b42fc842377fc605010e295f9",
-        "lib/gui.js": "d9bed981e16aa0ae1c11cd9242a2096c6a58013c48dc3dbadaeda0988450b92f",
-        "module.json": "eb27f9daa0bc552da3c5ea88a3e8452c1b7301e17c5fe4a6a8d6c358da5121ab",
-        "settings_migrator.js": "df730ab88aea10d9b93c7e81cd9b9ee43483bff40efdc859d9ad9bc51979dc7e",
-        "ui/app.js": "bb59a7f5dbf316e6a2828c5e9ed2c649e7adf8f5db14498948b767da30ab6c4f",
+        "README.en.md": "02d17acc6ea284b27bf205d3cdd553e876eb9ac1e89d2d79d24dd98968929d03",
+        "README.md": "6e61aa8ad1133a7e21d4826531bd4e0a27fa0751bfa8b709b10b9e98ee6fe9e7",
+        "index.js": "c11745c191cb3adc4e62912b4747a55aac56cf373d4e68d9b3a56f42611a1cf5",
+        "lib/gui.js": "62c9035f506cdaea6fe02cf4e652d0640991301c1aee05a96d6a895a5361024c",
+        "module.json": "4d32e827335bad1b1e581e550f8391212b66bc68642bc457621d4c07979b9070",
+        "settings_migrator.js": "e258c2f5457bac12cddf83706670dab467343e337e0200fa2ed4dbbb371037ba",
+        "ui/app.js": "6301455b82fbf2785a2808eb0d2b5614dbbd84c1faf35358fa0f0ecdb52a8f5b",
         "ui/bar.html": "cbf144c6c1e8a9f8a318ae93da4fa27b1cb49f713829a359f414401b4452462b",
-        "ui/bar.js": "b584406caecb29468df6cd0b55bed6b77f3bc046f2d11b9d80c2a88db3170660",
+        "ui/bar.js": "9d40e6473a713ff05e62407dfa1f14c00c521d705e08dc13edc226c384f0cdad",
         "ui/common.js": "4853788780663fe17dfdbdcc78b537c9011566f4d595966f8e978dc7e91c0ba4",
-        "ui/i18n.js": "2e8a0154858f42d604b726cf39aa60d2af5400f935183bbee0d5b6bf62050163",
+        "ui/i18n.js": "4cfa78394f98afa565fb1fa7ea6dd0bfbf00c7bb01091346e6a58e7154b73b34",
         "ui/icon.png": "153c6b94c62a6de3bd11694f61834e5c937fbfebb45621132679adca35b2f156",
         "ui/icons.js": "d4cfa0f2df2b80fe722ec641ad12add7ac3bc5335576f0f8baa0953c3a7646e5",
-        "ui/index.html": "3439434db5f35a499992ee8d4fce8ab6f2570396b60f538bb9d5c5b576bf2c39",
-        "ui/style.css": "ec28b447e8430d4e3f9b1855b36522a9be689251ac15a2809d30c3ba1b2be980"
+        "ui/index.html": "61f94649ef2c259d404f5ba6466e1c26e65f73ab7f725bd125bd045d18a960fb",
+        "ui/style.css": "0853558d74276bd7bc82b7b98fb238f0f1cee0dc7f4024a021b4e6829c173ea1"
     }
 }

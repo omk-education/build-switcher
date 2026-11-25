@@ -72,7 +72,10 @@ const DefaultSettings = {
     customIcons: {},
 
     // Сохранённые билды по персонажам
-    characters: {}
+    characters: {},
+
+    // Общие билды: общие поля + perChar[персонаж] — содержимое каждого персонажа
+    shared: { builds: {} }
 };
 
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -98,5 +101,7 @@ module.exports = function MigrateSettings(from_ver, to_ver, settings) {
     for (const k of ['compactSize', 'compact', 'autoHideBar', 'autoOpen', 'alwaysOnTop']) delete result.gui[k];
     // 4.1: роль в подборе подземелий убрана (сервер её не принимает)
     for (const c of Object.values(result.characters || {})) for (const b of Object.values((c && c.builds) || {})) delete b.role;
+    // 4.5: общие билды
+    if (!result.shared || typeof result.shared !== 'object' || !result.shared.builds) result.shared = { builds: {} };
     return result;
 };

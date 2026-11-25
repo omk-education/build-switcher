@@ -89,7 +89,8 @@ function renderMain(s) {
                     el('span', { class: 'name' }, b.name),
                     b.active ? el('span', { class: 'tag tag-active' }, tr('включён')) : null,
                     b.hotkey ? el('span', { class: 'tag tag-key', title: tr('Горячая клавиша') }, b.hotkey) : null,
-                    b.showOnBar === false ? el('span', { class: 'tag tag-hidden', title: tr('Не показывается на панели кнопок') }, tr('не на панели')) : null),
+                    b.showOnBar === false ? el('span', { class: 'tag tag-hidden', title: tr('Не показывается на панели кнопок') }, tr('не на панели')) : null,
+                    b.scope === 'shared' ? el('span', { class: 'tag tag-shared', title: tr('Общий билд: кнопка есть у всех персонажей') }, tr('общий')) : null),
                 el('div', { class: 'chips' },
                     b.equip !== null && b.equip !== undefined ? chip(tr('Экипировка {n}', { n: b.equip }), b.match.equip, !partOn(b, 'equip'), () => togglePart(b, 'equip')) : null,
                     b.costume ? chip(tr('Костюмы {n}', { n: b.costume }), b.match.costume, !partOn(b, 'costume'), () => togglePart(b, 'costume')) : null,
@@ -98,6 +99,7 @@ function renderMain(s) {
                     b.epPreset !== null ? chip(tr('Таланты {page}', { page: pageText(b.epPreset) }), b.match.ep, !partOn(b, 'talents'), () => togglePart(b, 'talents')) : null,
                     b.crests !== null ? chip(tr('Символы {n}', { n: b.crests }), b.match.crests, !partOn(b, 'crests'), () => togglePart(b, 'crests')) : null,
                     b.polish !== null ? chip(tr('Улучшения {n}', { n: b.polish }), b.match.polish, !partOn(b, 'polish'), () => togglePart(b, 'polish'))  : null),
+                b.unsaved ? el('div', { class: 'warn' }, tr('Для этого персонажа ещё не сохранён: настройте всё в игре и нажмите ✎ → «Перезаписать текущим».')) : null,
                 b.missing.length ? el('div', { class: 'warn', title: tr('Один раз переключите это в игре вручную, и мод запомнит') }, tr('Нужно выучить: {list}', { list: b.missing.join(', ') })) : null),
             el('button', { class: 'win edit-btn', title: tr('Настроить билд'), on: { click: () => openEditor(b.name) } },
                 el('span', { style: 'font-size:15px' }, '✎'))
@@ -170,6 +172,10 @@ function renderEditor() {
         : (!state.options.hotkeysEnabled ? tr('Горячие клавиши выключены в настройках.') : tr('Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.'));
     renderParts(b);
     $('ed-showbar').checked = b.showOnBar !== false;
+    for (const btn of $('ed-scope').querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.scope === b.scope);
+    $('ed-scope-hint').textContent = b.scope === 'shared'
+        ? tr('Общий: имя, иконка, цвет, клавиша и части общие для всех персонажей, а экипировку, символы, таланты и прочее каждый персонаж сохраняет своё. Сохранён у: {list}.', { list: b.sharedChars && b.sharedChars.length ? b.sharedChars.join(', ') : tr('нет') })
+        : tr('Для персонажа: кнопка видна только у {char}.', { char: state.character || '' });
 
     const actions = $('ed-overwrite').parentNode;
     const oldOw = $('ed-overwrite'), oldDel = $('ed-delete');
@@ -228,6 +234,8 @@ sheetBody.addEventListener('dragleave', e => { if (e.target === sheetBody) sheet
 sheetBody.addEventListener('drop', e => { e.preventDefault(); sheetBody.classList.remove('drop'); uploadSvgFiles(e.dataTransfer.files); });
 
 $('ed-close').addEventListener('click', closeEditor);
+for (const btn of $('ed-scope').querySelectorAll('button'))
+    btn.addEventListener('click', () => editing && send('scope', editing, btn.dataset.scope));
 $('ed-showbar').addEventListener('change', e => editing && send('update', editing, { showOnBar: e.target.checked }));
 $('editor').addEventListener('click', e => { if (e.target === $('editor')) closeEditor(); });
 $('ed-name').addEventListener('keydown', e => { if (e.key === 'Enter') closeEditor(); if (e.key === 'Escape') { $('ed-name').value = editing; closeEditor(); } });

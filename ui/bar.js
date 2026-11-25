@@ -46,7 +46,7 @@ function render(s) {
         if (b.hotkey) title.push(b.hotkey);
         if (s.inCombat && o.blockInCombat) title.push(tr('недоступно в бою'));
         box.append(el('button', {
-            class: `cbtn${b.active ? ' active' : ''}${blocked ? ' blocked' : ''}`,
+            class: `cbtn${b.active ? ' active' : ''}${blocked ? ' blocked' : ''}${b.unsaved ? ' unsaved' : ''}`,
             title: title.join(' · '),
             on: { click: () => !blocked && send('apply', b.name) }
         },
