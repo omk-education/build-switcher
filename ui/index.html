@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Build Switcher</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="tera">
+
+<header class="titlebar" id="titlebar">
+    <div class="brand">
+        <svg class="ico brand-icon" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+        <span class="title">Build Switcher</span>
+        <span class="char" id="char"></span>
+    </div>
+    <div class="win-buttons">
+        <button class="win" id="btn-settings" title="Настройки"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+        <button class="win" id="btn-pin" title="Поверх всех окон"><svg viewBox="0 0 24 24"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg></button>
+        <button class="win" id="btn-compact" title="Компактный режим"><svg viewBox="0 0 24 24"><path d="M4 9h6V3M20 15h-6v6M10 9L3 2M14 15l7 7"/></svg></button>
+        <button class="win" id="btn-min" title="Свернуть"><svg viewBox="0 0 24 24"><path d="M5 18h14"/></svg></button>
+        <button class="win close" id="btn-close" title="Закрыть (открыть снова: /8 build gui)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+</header>
+
+<!-- ======================= Билды ======================= -->
+<main id="view-main" class="view">
+    <section class="now">
+        <div class="now-row">
+            <div>
+                <div class="label">Сейчас</div>
+                <div class="now-value" id="now-build">—</div>
+            </div>
+            <div class="now-detail" id="now-detail"></div>
+        </div>
+        <div id="alerts" class="alerts"></div>
+    </section>
+
+    <section id="builds" class="builds"></section>
+
+    <section class="new">
+        <input id="new-name" maxlength="24" placeholder="Имя нового билда (например, pvp)" spellcheck="false">
+        <button id="btn-save" class="primary">Сохранить текущее</button>
+    </section>
+    <p class="hint">«Сохранить текущее» запоминает символы, страницу талантов и опции «Улучшения умений», которые сейчас включены в игре.</p>
+</main>
+
+<!-- ======================= Настройки ======================= -->
+<main id="view-settings" class="view hidden">
+    <div class="settings-head">
+        <button class="back" id="btn-back">← Назад</button>
+        <h2>Настройки</h2>
+    </div>
+
+    <section class="group">
+        <h3>Окно</h3>
+        <div class="row" data-key="gui.alwaysOnTop" data-type="bool"><span>Поверх всех окон<small>Игра должна быть в режиме «Окно» или «Окно без рамки»</small></span></div>
+        <div class="row" data-key="gui.autoOpen" data-type="bool"><span>Открывать при входе в игру</span></div>
+        <div class="row" data-key="gui.opacity" data-type="range" data-min="30" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность</span></div>
+        <div class="row" data-key="gui.idleOpacity" data-type="range" data-min="15" data-max="100" data-step="5" data-unit="%"><span>Когда курсор не над окном<small>Окно становится прозрачнее, пока вы играете</small></span></div>
+        <div class="row" data-key="gui.zoom" data-type="range" data-min="70" data-max="150" data-step="5" data-unit="%"><span>Масштаб интерфейса</span></div>
+        <div class="row" data-key="gui.theme" data-type="theme"><span>Тема</span></div>
+    </section>
+
+    <section class="group">
+        <h3>Компактный режим</h3>
+        <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
+        <div class="row" data-key="gui.labels" data-type="bool"><span>Подписи под кнопками</span></div>
+        <div class="row" data-key="gui.layout" data-type="seg" data-options="row:В строку|column:В столбец"><span>Расположение</span></div>
+        <div class="row" data-key="gui.autoHideBar" data-type="bool"><span>Прятать заголовок<small>Кнопки управления появятся при наведении</small></span></div>
+    </section>
+
+    <section class="group">
+        <h3>Переключение</h3>
+        <div class="row" data-key="blockInCombat" data-type="bool"><span>Не переключать в бою</span></div>
+        <div class="row" data-key="crestsWhenBusy" data-type="select" data-options="single:По одному|skip:Не трогать символы|abort:Отменить переключение"><span>Если открыто окно взаимодействия<small>NPC, банк, торговля, крафт: сервер не меняет весь набор символов сразу</small></span></div>
+        <div class="row" data-key="delay" data-type="range" data-min="200" data-max="1500" data-step="50" data-unit=" мс"><span>Пауза между пакетами<small>Больше — надёжнее, меньше — быстрее</small></span></div>
+        <div class="row" data-key="hotkeysEnabled" data-type="bool"><span>Горячие клавиши билдов<small>Назначаются в редакторе билда (✎)</small></span></div>
+    </section>
+
+    <section class="group">
+        <h3>Уведомления</h3>
+        <div class="row" data-key="gui.toastSeconds" data-type="range" data-min="0" data-max="30" data-step="1" data-unit=" с" data-zero="не скрывать"><span>Показывать результат</span></div>
+        <div class="row" data-key="chatReports" data-type="bool"><span>Дублировать результат в чат</span></div>
+        <div class="row" data-key="gui.confirmDelete" data-type="bool"><span>Подтверждать удаление и перезапись</span></div>
+    </section>
+
+    <section class="group">
+        <h3>Данные</h3>
+        <div class="row static"><span>Выученные пакеты<small id="learned-info">—</small></span>
+            <button class="small danger" id="btn-forget">Забыть</button></div>
+        <div class="row static"><span>Положение, размер и прозрачность окна</span>
+            <button class="small" id="btn-reset-window">Сбросить</button></div>
+    </section>
+
+    <details class="help">
+        <summary>Символы и «Наборы» 1–5</summary>
+        <p>Номер «Набора» хранит только клиент игры. Сервер получает лишь список символов, поэтому новый список записывается в «Набор», выбранный сейчас.
+        Держите выбранным свободный «Набор» (например, 5): мод будет менять только его.</p>
+        <p>Если открыто окно взаимодействия (NPC, банк, торговля, крафт), сервер не меняет весь набор сразу. Что делать в этом случае, выбирается выше.</p>
+    </details>
+    <p class="version" id="version"></p>
+</main>
+
+<!-- ======================= Компактный режим ======================= -->
+<main id="view-compact" class="view hidden"></main>
+<div class="compact-tools" id="compact-tools">
+    <button class="win" id="c-expand" title="Полный режим"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
+    <button class="win close" id="c-close" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+
+<!-- ======================= Редактор билда ======================= -->
+<div class="sheet hidden" id="editor">
+    <div class="sheet-body">
+        <div class="sheet-head">
+            <div class="preview" id="ed-preview"></div>
+            <input id="ed-name" maxlength="24" spellcheck="false">
+            <button class="win" id="ed-close" title="Готово"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></button>
+        </div>
+
+        <div class="ed-label">Иконка</div>
+        <div class="tabs" id="ed-tabs"></div>
+        <div class="icon-grid" id="ed-icons"></div>
+
+        <div class="ed-label">Цвет</div>
+        <div class="swatches" id="ed-colors"></div>
+
+        <div class="ed-label">Горячая клавиша</div>
+        <div class="hotkey-row">
+            <input id="ed-hotkey" readonly placeholder="Нажмите, затем сочетание клавиш">
+            <button class="small" id="ed-hotkey-clear">Убрать</button>
+        </div>
+        <p class="hint" id="ed-hotkey-hint">Работает и когда окно свёрнуто. Сочетание перехватывается у всех программ, включая игру, поэтому выбирайте свободное: например, Ctrl+Alt+1 или F9.</p>
+
+        <label class="check"><input type="checkbox" id="ed-crests"> Переключать символы</label>
+
+        <div class="ed-actions">
+            <button class="small" id="ed-up" title="Выше">↑</button>
+            <button class="small" id="ed-down" title="Ниже">↓</button>
+            <span class="grow"></span>
+            <button class="small" id="ed-overwrite">Перезаписать текущим</button>
+            <button class="small danger" id="ed-delete">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="icons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
