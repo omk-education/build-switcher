@@ -7,7 +7,7 @@
 installIcons();
 
 let state = null;
-let view = 'main';            // main | settings
+let view = 'main';            // main | страница настроек: bar, look, window, switch, notify, data
 let editing = null;           // имя билда в редакторе
 const CUSTOM_TAB = 'Свои';
 let iconTab = ICON_GROUPS[0].name;
@@ -316,6 +316,8 @@ hk.addEventListener('keydown', e => {
 });
 
 // ---------------------------------------------------------------- настройки
+const COLOR_PALETTE_BG = ['', '#000000', '#0d1726', '#1a2d4d', '#26292f', '#3a1a1a', '#14301f', '#2d1f3d', '#4a3a12', '#ffffff'];
+const COLOR_PALETTE_FG = ['', '#ffffff', '#e0b44c', '#ffd34d', '#4fb3ff', '#6fe0a0', '#ff7a6b', '#ff8ad8', '#b78cff', '#000000'];
 const THEMES = { tera: '#4fb3ff', graphite: '#7aa7ff', crimson: '#ff6b81', emerald: '#4fd6a0', light: '#eef2f7' };
 const THEME_NAMES = { tera: 'TERA', graphite: 'Графит', crimson: 'Багровая', emerald: 'Изумруд', light: 'Светлая' };
 
@@ -328,11 +330,11 @@ function buildSettings() {
         const { key, type } = row.dataset;
         if (row.ctl) { row.ctl.remove(); row.ctl = null; }
         let ctl;
-        if (type === 'bgcolor') {
-            // Палитра тёмных фонов + свой цвет; пусто — цвет темы
-            const PALETTE = ['', '#000000', '#0d1726', '#1a2d4d', '#26292f', '#3a1a1a', '#14301f', '#2d1f3d', '#4a3a12', '#ffffff'];
+        if (type === 'color') {
+            // Палитра (тёмные фоны или яркие цвета) + свой цвет; пусто — «по умолчанию» (подпись в data-auto)
+            const PALETTE = row.dataset.palette === 'bg' ? COLOR_PALETTE_BG : COLOR_PALETTE_FG;
             const dots = PALETTE.map(c => el('button', {
-                class: `swatch${c ? '' : ' auto'}`, title: c || tr('По теме'), style: c ? `background:${c}` : null,
+                class: `swatch${c ? '' : ' auto'}`, title: c || tr(row.dataset.auto || 'По умолчанию'), style: c ? `background:${c}` : null,
                 on: { click: () => setOpt(key, c) }
             }));
             const picker = el('input', { type: 'color', class: 'color-input', title: tr('Свой цвет'), on: { change: e => setOpt(key, e.target.value) } });
@@ -361,7 +363,8 @@ function buildSettings() {
             row.update = v => { input.checked = !!v; };
         } else if (type === 'range') {
             const out = el('output');
-            const fmt = v => (Number(v) === 0 && row.dataset.zero ? tr(row.dataset.zero) : `${v}${tr(row.dataset.unit || '')}`);
+            const fmt = v => (Number(v) === 0 && row.dataset.zero ? tr(row.dataset.zero)
+                : Number(v) < 0 && row.dataset.auto ? tr(row.dataset.auto) : `${v}${tr(row.dataset.unit || '')}`);
             let t = null;
             const input = el('input', {
                 type: 'range', min: row.dataset.min, max: row.dataset.max, step: row.dataset.step,
@@ -393,12 +396,17 @@ function buildSettings() {
 }
 
 function renderSettings(s) {
+    for (const page of document.querySelectorAll('#view-settings .page')) page.classList.toggle('hidden', page.dataset.page !== view);
     for (const row of document.querySelectorAll('#view-settings .row[data-key]')) if (row.update) row.update(optValue(row.dataset.key));
-    // Цвет, непрозрачность и рамка имеют смысл только при включённом фоне кнопок
-    for (const k of ['gui.buttonBgColor', 'gui.buttonBgOpacity', 'gui.buttonBorder']) {
+    // Фон, рамка и их цвета имеют смысл только при включённом фоне кнопок; цвет и толщина рамки — при включённой рамке
+    const o = s.options;
+    const dep = { 'gui.buttonBgColor': o.buttonBg, 'gui.buttonBgOpacity': o.buttonBg, 'gui.buttonBorder': o.buttonBg, 'gui.activeBgColor': o.buttonBg,
+        'gui.borderColor': o.buttonBg && o.buttonBorder, 'gui.borderWidth': o.buttonBg && o.buttonBorder };
+    for (const [k, on] of Object.entries(dep)) {
         const row = document.querySelector(`.row[data-key="${k}"]`);
-        if (row) row.classList.toggle('hidden', s.options.buttonBg === false);
+        if (row) row.classList.toggle('hidden', on === false);
     }
+    if (view === 'look') renderLookPreview(s);
     const l = s.learned || {};
     $('learned-info').textContent = tr('страниц талантов: {ep}{ept}, опций улучшения: {polish}{pt}', { ep: l.epPages || 0, ept: l.epTemplate ? tr(' (+шаблон)') : '', polish: l.polish || 0, pt: l.polishTemplate ? tr(' (+шаблон)') : '' });
     $('version').textContent = s.version ? `build-switcher ${s.version}` : '';
@@ -412,12 +420,34 @@ $('btn-forget').replaceWith((() => {
     return b;
 })());
 $('btn-reset-window').addEventListener('click', () => send('resetWindow'));
-$('btn-back').addEventListener('click', () => setView('main'));
-$('btn-settings').addEventListener('click', () => setView(view === 'settings' ? 'main' : 'settings'));
+for (const nav of document.querySelectorAll('#side .nav')) nav.addEventListener('click', () => setView(nav.dataset.view));
+// Вернуть вид кнопок по умолчанию
+const LOOK_DEFAULTS = { 'gui.iconSize': 56, 'gui.iconPadding': -1, 'gui.radius': 10, 'gui.labels': true, 'gui.layout': 'row', 'gui.iconColor': '', 'gui.buttonBg': true,
+    'gui.buttonBgColor': '', 'gui.buttonBgOpacity': 100, 'gui.buttonBorder': true, 'gui.borderColor': '', 'gui.borderWidth': 1,
+    'gui.activeIconColor': '', 'gui.activeBgColor': '', 'gui.activeBorderColor': '' };
+$('btn-reset-look').replaceWith((() => {
+    const b = confirmButton(tr('Вернуть вид по умолчанию'), tr('Точно вернуть?'), '', () => { for (const [k, v] of Object.entries(LOOK_DEFAULTS)) setOpt(k, v); });
+    b.id = 'btn-reset-look';
+    return b;
+})());
 
 function setView(v) {
+    if (v !== view) $('view-settings').scrollTop = 0;
     view = v;
     if (state) render(state);
+}
+
+// Пример панели на странице «Вид кнопок»: билды персонажа (или образцы), первый — включённый, если включённого нет
+function renderLookPreview(s) {
+    const o = s.options;
+    const box = $('look-bar');
+    box.textContent = '';
+    applyBarLook(box, o);
+    let list = s.builds.filter(b => b.showOnBar !== false).slice(0, 4);
+    if (!list.length) list = [{ name: 'tank', icon: 'shield' }, { name: 'dd', icon: 'sword' }, { name: 'heal', icon: 'heal' }];
+    if (!list.some(b => b.active)) list = list.map((b, i) => Object.assign({}, b, { active: i === 0 }));
+    for (const b of list) box.append(barButton(b, o));
+    $('look-preview').classList.toggle('transparent', !!o.transparentBg);
 }
 
 // ---------------------------------------------------------------- уведомление
@@ -444,11 +474,11 @@ function render(s) {
     document.body.classList.toggle('busy', s.busy);
     $('btn-pin').classList.toggle('on', !!o.managerOnTop);
     $('btn-bar').classList.toggle('on', !!s.barOpen);
-    $('btn-settings').classList.toggle('on', view === 'settings');
+    for (const nav of document.querySelectorAll('#side .nav')) nav.classList.toggle('on', nav.dataset.view === view);
 
     $('view-main').classList.toggle('hidden', view !== 'main');
-    $('view-settings').classList.toggle('hidden', view !== 'settings');
-    if (view === 'settings') renderSettings(s);
+    $('view-settings').classList.toggle('hidden', view === 'main');
+    if (view !== 'main') renderSettings(s);
     else { renderMain(s); if (editing) renderEditor(); }
     renderToast(s);
 }
@@ -456,7 +486,7 @@ function render(s) {
 // ---------------------------------------------------------------- язык
 // Элементы, которые заполняет код (их текст не берём как статичный)
 collectStatic(['builds', 'alerts', 'now-build', 'now-detail', 'ed-tabs', 'ed-icons', 'ed-custom', 'ed-colors',
-    'ed-parts', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview']);
+    'ed-parts', 'toast', 'char', 'learned-info', 'version', 'ed-hotkey-hint', 'ed-preview', 'look-bar']);
 
 handlers.state = s => {
     if (setLanguage((s.options && s.options.language) || 'ru')) buildSettings();

@@ -78,3 +78,45 @@ document.documentElement.addEventListener('mouseleave', () => send('hover', fals
 // Не даём окну «открыть» перетащенный файл
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => e.preventDefault());
+
+// ---------------------------------------------------------------- кнопки панели (панель и предпросмотр в настройках)
+const hexRgb = h => {
+    const m = /^#([0-9a-f]{6})$/i.exec(h || '');
+    return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(',') : null;
+};
+// Внешний вид кнопок задаётся CSS-переменными на контейнере .bar
+function applyBarLook(box, o) {
+    const set = (k, v) => (v === null || v === undefined || v === '' ? box.style.removeProperty(k) : box.style.setProperty(k, v));
+    box.classList.toggle('column', o.layout === 'column');
+    box.classList.toggle('no-bg', o.buttonBg === false);
+    box.classList.toggle('no-border', o.buttonBorder === false);
+    set('--isz', `${o.iconSize || 56}px`);
+    const rgb = hexRgb(o.buttonBgColor) || getComputedStyle(document.body).getPropertyValue('--tile-theme-rgb').trim();
+    const a = (o.buttonBgOpacity === undefined ? 100 : o.buttonBgOpacity) / 100;
+    set('--tile-rgb', rgb);
+    set('--tile-a', String(a));
+    set('--tile-a2', String(Math.min(1, a * 0.75)));
+    set('--act-rgb', hexRgb(o.activeBgColor) || rgb);
+    set('--bd', o.borderColor || '');
+    set('--act-bd', o.activeBorderColor || '');
+    set('--act-bd-rgb', hexRgb(o.activeBorderColor) || '');
+    set('--bdw', `${o.borderWidth || 1}px`);
+    set('--rad', `${o.radius === undefined ? 10 : o.radius}px`);
+    const pad = o.iconPadding === undefined ? -1 : o.iconPadding;
+    box.classList.toggle('pad', pad >= 0);
+    set('--ipad', pad >= 0 ? `${pad}px` : '');
+}
+function barButton(b, o, { blocked = false, title = '', onClick = null } = {}) {
+    const color = b.active && o.activeIconColor ? o.activeIconColor : (o.iconColor || colorOf(b));
+    return el('button', {
+        class: `cbtn${b.active ? ' active' : ''}${blocked ? ' blocked' : ''}${b.unsaved ? ' unsaved' : ''}`,
+        title: title || null,
+        on: onClick ? { click: onClick } : null
+    },
+    el('div', { class: 'big', style: color ? `color:${color}` : null }, iconEl(b.icon)),
+    o.labels ? el('span', {}, b.name) : null);
+}
+
+// ---------------------------------------------------------------- ошибки страницы — в лог мода
+window.addEventListener('error', e => send('error', `${e.message} @ ${(e.filename || '').split('/').pop()}:${e.lineno}`));
+window.addEventListener('unhandledrejection', e => send('error', String(e.reason)));

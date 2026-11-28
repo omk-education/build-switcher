@@ -24,17 +24,10 @@ function render(s) {
 
     const box = $('bar');
     box.textContent = '';
-    box.classList.toggle('column', o.layout === 'column');
-    box.classList.toggle('no-bg', !o.buttonBg);
-    box.style.setProperty('--isz', `${o.iconSize}px`);
-    // Фон кнопок: цвет (по теме или свой) и непрозрачность
-    const hex = /^#([0-9a-f]{6})$/i.exec(o.buttonBgColor || '');
-    const rgb = hex ? [0, 2, 4].map(i => parseInt(hex[1].slice(i, i + 2), 16)).join(',') : getComputedStyle(document.body).getPropertyValue('--tile-theme-rgb').trim();
-    const a = (o.buttonBgOpacity === undefined ? 100 : o.buttonBgOpacity) / 100;
-    box.style.setProperty('--tile-rgb', rgb);
-    box.style.setProperty('--tile-a', String(a));
-    box.style.setProperty('--tile-a2', String(Math.min(1, a * 0.75)));
-    box.classList.toggle('no-border', o.buttonBorder === false);
+    applyBarLook(box, o);
+    // Прозрачность прозрачной панели делает страница (см. applyOpacity в lib/gui.js)
+    document.body.style.setProperty('--op-full', String((o.opacity || 100) / 100));
+    document.body.style.setProperty('--op-idle', String(Math.min(o.opacity || 100, o.idleOpacity || 100) / 100));
 
     const shown = s.builds.filter(b => b.showOnBar !== false);
     if (!shown.length) {
@@ -45,14 +38,8 @@ function render(s) {
         const title = [tr('Включить «{name}»', { name: b.name })];
         if (b.hotkey) title.push(b.hotkey);
         if (s.inCombat && o.blockInCombat) title.push(tr('недоступно в бою'));
-        box.append(el('button', {
-            class: `cbtn${b.active ? ' active' : ''}${blocked ? ' blocked' : ''}${b.unsaved ? ' unsaved' : ''}`,
-            title: title.join(' · '),
-            // Решение «можно ли» принимает мод: панель могла не получить свежее состояние (например, конец боя)
-            on: { click: () => send('apply', b.name) }
-        },
-        el('div', { class: 'big', style: colorOf(b) ? `color:${colorOf(b)}` : null }, iconEl(b.icon)),
-        o.labels ? el('span', {}, b.name) : null));
+        // Решение «можно ли» принимает мод: панель могла не получить свежее состояние (например, конец боя)
+        box.append(barButton(b, o, { blocked, title: title.join(' · '), onClick: () => send('apply', b.name) }));
     }
     requestAnimationFrame(fit);
 }
@@ -104,6 +91,15 @@ window.addEventListener('blur', endDrag);
 document.addEventListener('click', e => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); swallowClick = false; } }, true);
 
 handlers.state = render;
+// Сторож (lib/gui.js): отвечаем с кадра отрисовки — так мод видит, что окно живо и рисуется
+handlers.ping = id => {
+    let done = false;
+    const reply = painted => { if (done) return; done = true; send('pong', id, painted, document.visibilityState); };
+    requestAnimationFrame(() => reply(true));
+    setTimeout(() => reply(false), 1500);
+};
+document.documentElement.addEventListener('mouseenter', () => document.body.classList.add('hover'));
+document.documentElement.addEventListener('mouseleave', () => document.body.classList.remove('hover'));
 $('b-manager').addEventListener('click', () => send('openManager'));
 $('b-lock').addEventListener('click', () => send('toggleLock'));
 $('b-close').addEventListener('click', () => send('close'));

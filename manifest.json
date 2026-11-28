@@ -1,19 +1,19 @@
 {
     "files": {
-        "README.en.md": "02d17acc6ea284b27bf205d3cdd553e876eb9ac1e89d2d79d24dd98968929d03",
-        "README.md": "6e61aa8ad1133a7e21d4826531bd4e0a27fa0751bfa8b709b10b9e98ee6fe9e7",
+        "README.en.md": "523aed04865a5a510f825692cc5797968b1fdabdfaf130a8a486309a05255f34",
+        "README.md": "9a1892040f9c325d518364017f17fbad63166cce3668d6766e8f0f5dd5226e5f",
         "index.js": "a052ee03b0035306077d80d3f36fe9f1efae7b039710f92a40d2993a2f8b9202",
-        "lib/gui.js": "c71e4e9b67a6b708368c7cce8f74eeb3031347730f72613101d192a7dbb6e9c5",
-        "module.json": "8885808d64600669477faa7388de64b201f121a9038c4139454ce1ad2bba3581",
-        "settings_migrator.js": "e258c2f5457bac12cddf83706670dab467343e337e0200fa2ed4dbbb371037ba",
-        "ui/app.js": "6301455b82fbf2785a2808eb0d2b5614dbbd84c1faf35358fa0f0ecdb52a8f5b",
+        "lib/gui.js": "44fdb9ab2e798b70b977cc569f46e380423d701086aaab8a12f66fc0a3700590",
+        "module.json": "ca2e440e8ed1727584a2eb274e973a9d686a5384747fe2c343746cf98fd5c188",
+        "settings_migrator.js": "063a999ca0ccb05d913164dc49bc19913285d69059331d201236bbc4470a8e08",
+        "ui/app.js": "e4eb87e8a233dbafd5fca259014d1c471e14f87d97daa29c1fff7fad7acf658f",
         "ui/bar.html": "cbf144c6c1e8a9f8a318ae93da4fa27b1cb49f713829a359f414401b4452462b",
-        "ui/bar.js": "8ea18c1852281333bd8074c4d24db16915e9a104d591a804c1bcf5635532a4a2",
-        "ui/common.js": "4853788780663fe17dfdbdcc78b537c9011566f4d595966f8e978dc7e91c0ba4",
-        "ui/i18n.js": "4cfa78394f98afa565fb1fa7ea6dd0bfbf00c7bb01091346e6a58e7154b73b34",
+        "ui/bar.js": "19b46e4ed09f22a9f88815a4672690e9da2b76ab5d46436b363454ed3fbbd9e5",
+        "ui/common.js": "78855431fcb789d1c060830fda8545762ff20094a09753e4af4a274907cd5b66",
+        "ui/i18n.js": "90164d5baabb5fae676d35e863e0cbdcb505f4a75d8cc1035c3684cdd04b23c1",
         "ui/icon.png": "153c6b94c62a6de3bd11694f61834e5c937fbfebb45621132679adca35b2f156",
         "ui/icons.js": "d4cfa0f2df2b80fe722ec641ad12add7ac3bc5335576f0f8baa0953c3a7646e5",
-        "ui/index.html": "61f94649ef2c259d404f5ba6466e1c26e65f73ab7f725bd125bd045d18a960fb",
-        "ui/style.css": "0853558d74276bd7bc82b7b98fb238f0f1cee0dc7f4024a021b4e6829c173ea1"
+        "ui/index.html": "f3a8e14e7404cebe79aff334960d6c4e502a0aef7674768ec8a1d6de7185336b",
+        "ui/style.css": "0493556bb768788161cf9920b1417992d01ec7373bb2826fdd91cba06e67a0b2"
     }
 }

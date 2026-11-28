@@ -45,6 +45,14 @@ const DefaultSettings = {
         buttonBgColor: '',    // цвет фона кнопок: '' — по теме, иначе #rrggbb
         buttonBgOpacity: 100, // непрозрачность фона кнопок, %
         buttonBorder: true,   // рамка кнопок
+        borderColor: '',      // цвет рамки ('' — по теме)
+        borderWidth: 1,       // толщина рамки, px
+        radius: 10,           // скругление углов, px
+        iconPadding: -1,      // отступ иконки от края кнопки, px (-1 — авто)
+        iconColor: '',        // цвет иконок ('' — цвет билда)
+        activeIconColor: '',  // включённый билд: цвет иконки ('' — как у обычной)
+        activeBgColor: '',    // включённый билд: цвет фона ('' — как у обычной)
+        activeBorderColor: '', // включённый билд: рамка и свечение ('' — золотой цвет темы)
         transparentBg: false, // прозрачная панель: над игрой видны только кнопки
         barPosition: null,    // [x, y] — запоминается автоматически
         // окно управления
@@ -101,6 +109,8 @@ module.exports = function MigrateSettings(from_ver, to_ver, settings) {
     for (const k of ['compactSize', 'compact', 'autoHideBar', 'autoOpen', 'alwaysOnTop']) delete result.gui[k];
     // 4.1: роль в подборе подземелий убрана (сервер её не принимает)
     for (const c of Object.values(result.characters || {})) for (const b of Object.values((c && c.builds) || {})) delete b.role;
+    // 4.6: окно управления с боковым меню — шире прежнего
+    if (from_ver < 14 && Array.isArray(result.gui.size) && result.gui.size[0] < 600) result.gui.size = [600, Math.max(560, result.gui.size[1] | 0)];
     // 4.5: общие билды
     if (!result.shared || typeof result.shared !== 'object' || !result.shared.builds) result.shared = { builds: {} };
     return result;

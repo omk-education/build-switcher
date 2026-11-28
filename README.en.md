@@ -110,7 +110,7 @@ When you enter the game, the mod summons the servant of the last applied build (
 
 The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 
-**Button bar**: a small window over the game with just the build buttons. It appears when you enter the game; hide and show it with `/8 build bar`.
+**Button bar**: a small window over the game with just the build buttons. It appears when you enter the game; hide and show it with `/8 build bar`. The bar is shown only on a character: it hides on the character selection screen and comes back when you log in to a character.
 - Clicking a button switches to that build. The active build is highlighted in gold. The button tooltip shows its hotkey.
 - The bar shows builds with "Show on the button bar" enabled (a switch in the build editor). Hidden builds are marked "not on bar" in the manager window.
 - "Hide when the game is inactive": the bar disappears when you switch to another window or minimize the game, and comes back when you return. While the manager window is active, the bar stays visible.
@@ -119,13 +119,14 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 - To avoid moving the bar by accident, lock it: the lock on the bar, ⚙ → "Lock the bar" or `/8 build lock`. A locked bar does not move, while its buttons work as usual.
 - On hover, 🔒 (lock or unlock), ⚙ (manager window) and × (hide the bar) appear above the icons.
 - The bar fits itself to the number and size of buttons.
-- In settings you can remove the button background or pick its color (palette or custom) and opacity, remove the border and labels, make the bar transparent (only the buttons are visible over the game), pick the size and layout (row or column) and the idle opacity.
+- The "Button look" section (with a live bar preview) sets the size, icon padding, corner radius, labels and layout; the icon color, background (on/off, color, opacity) and border (on/off, color, width); and separately for the active build the icon color, background color and border/glow color. "Restore default look" resets all of it.
+- The mod watches the bar: if its window stops responding or painting, it is recreated automatically (same as hiding and showing the bar). The Toolbox window then shows a `bar window …: recreating it` line. If the window keeps freezing, auto-restart pauses after 5 restarts in 10 minutes.
 
-**Manager window**: builds, editor and settings. Open it with ⚙ on the bar or `/8 build gui`.
+**Manager window**: builds, editor and settings. Open it with ⚙ on the bar or `/8 build gui`. The menu on the left holds "Builds" and the settings sections; in a narrow window only its icons remain.
 - The "Now" block shows which build is active and warns you when you are in combat, an interaction window is open, or a hotkey could not be registered.
 - The big icon on a card switches to that build. ✓ and ✗ show what matches the current state; the chips enable and disable build parts.
 - The ✎ button opens the build editor: name, what to switch, icon (more than 40 in four groups, plus your own SVGs), color, hotkey, order in the list, "Overwrite with current" and "Delete".
-- Title bar buttons: ⚙ settings, ▭▭▭ show or hide the button bar, 📌 always on top, minimize, close.
+- Title bar buttons: ▭▭▭ show or hide the button bar, 📌 always on top, minimize, close.
 
 **Custom icons (SVG).** Build editor (✎) → "Custom" tab → "+", or drop .svg files into the editor.
 - Up to 150 KB per file and up to 60 icons. They are stored in `config.json` and survive updates.
@@ -135,15 +136,16 @@ The windows only work in **TeraToolbox.exe** (GUI), not in the CLI.
 
 **Hotkeys.** They work globally, even when the windows are minimized or closed (while Toolbox is running). The combination is captured from all programs, including the game, so pick an unused one: e.g. `Ctrl+Alt+1` or `F9`. Single letters without Ctrl, Alt or Shift are not allowed.
 
-## Settings (⚙ in the window)
+## Settings (left menu of the manager window)
 
 | Section | What you can change |
 |---|---|
-| Button bar | show on login, always on top, keep the game focused, hide when the game is inactive, lock the bar, button size, button background (on/off, color, opacity), button border, labels, transparent bar, row or column, opacity and idle opacity |
-| Manager window | open on login, always on top, scale, theme (TERA, Graphite, Crimson, Emerald, Light), language |
+| Button bar | show on login, always on top, keep the game focused, hide when the game is inactive, lock the bar, transparent bar, opacity and idle opacity |
+| Button look | size, icon padding, corner radius, labels, layout; icon color, background, border and its width; icon, background and border colors of the active build |
+| Interface | open on login, always on top, scale, theme (TERA, Graphite, Crimson, Emerald, Light), language |
 | Switching | summon the servant on login, no switching in combat, behavior while an interaction window is open, delay between packets, hotkeys |
 | Notifications | how long to show results, also post to chat, confirm delete and overwrite |
-| Data | forget learned packets, reset window positions and opacity |
+| Data | forget learned packets, reset window positions and opacity, glyph set help |
 
 ## Interface language
 

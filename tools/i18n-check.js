@@ -44,10 +44,10 @@ for (const m of icons.matchAll(/name: '([^']*)'/g)) add(m[1], 'ui/icons.js group
 for (const m of icons.matchAll(/\['([^']*)', `/g)) add(m[1], 'ui/icons.js icon');
 for (const m of icons.matchAll(/throw new Error\('([^']*)'\)/g)) add(m[1], 'ui/icons.js error');
 
-// Статичный HTML: текст между тегами, title, placeholder, data-options, data-unit, data-zero
+// Статичный HTML: текст между тегами, title, placeholder, data-options, data-unit, data-zero, data-auto
 const html = ['ui/index.html', 'ui/bar.html'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n').replace(/<svg[\s\S]*?<\/svg>/g, '');
 for (const m of html.matchAll(/>([^<>]+)</g)) { const t = m[1].trim(); if (t) add(t, 'ui/index.html'); }
-for (const m of html.matchAll(/(?:title|placeholder|data-zero|data-unit)="([^"]*)"/g)) add(m[1], 'ui/index.html attr');
+for (const m of html.matchAll(/(?:title|placeholder|data-zero|data-unit|data-auto)="([^"]*)"/g)) add(m[1], 'ui/index.html attr');
 for (const m of html.matchAll(/data-options="([^"]*)"/g)) for (const opt of m[1].split('|')) add(opt.split(':')[1], 'ui/index.html option');
 
 let missing = 0;

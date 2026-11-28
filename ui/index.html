@@ -15,7 +15,6 @@
         <span class="char" id="char"></span>
     </div>
     <div class="win-buttons">
-        <button class="win" id="btn-settings" title="Настройки"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
         <button class="win" id="btn-bar" title="Панель кнопок: показать или скрыть"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="9.5" y="8" width="5" height="8" rx="1.5"/><rect x="16" y="8" width="5" height="8" rx="1.5"/></svg></button>
         <button class="win" id="btn-pin" title="Окно управления поверх всех окон"><svg viewBox="0 0 24 24"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg></button>
         <button class="win" id="btn-min" title="Свернуть"><svg viewBox="0 0 24 24"><path d="M5 18h14"/></svg></button>
@@ -23,6 +22,22 @@
     </div>
 </header>
 
+<div class="shell">
+<!-- ======================= Боковое меню ======================= -->
+<nav class="side" id="side">
+    <button class="nav" data-view="main" title="Билды"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>Билды</span></button>
+    <div class="nav-label">Настройки</div>
+    <button class="nav" data-view="bar" title="Панель кнопок"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="9.5" y="8" width="5" height="8" rx="1.5"/><rect x="16" y="8" width="5" height="8" rx="1.5"/></svg><span>Панель кнопок</span></button>
+    <button class="nav" data-view="look" title="Вид кнопок"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.7 1.6-1.6 0-1-.9-1.4-.9-2.4 0-.9.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4C21 7 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span>Вид кнопок</span></button>
+    <button class="nav" data-view="window" title="Окно и язык"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18"/></svg><span>Окно и язык</span></button>
+    <button class="nav" data-view="switch" title="Переключение"><svg viewBox="0 0 24 24"><path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/></svg><span>Переключение</span></button>
+    <button class="nav" data-view="notify" title="Уведомления"><svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><span>Уведомления</span></button>
+    <button class="nav" data-view="data" title="Данные и справка"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span>Данные</span></button>
+    <div class="grow"></div>
+    <p class="version" id="version"></p>
+</nav>
+
+<div class="content">
 <!-- ======================= Билды ======================= -->
 <main id="view-main" class="view">
     <section class="now">
@@ -47,71 +62,107 @@
 
 <!-- ======================= Настройки ======================= -->
 <main id="view-settings" class="view hidden">
-    <div class="settings-head">
-        <button class="back" id="btn-back">← Назад</button>
-        <h2>Настройки</h2>
-    </div>
-
-    <section class="group">
-        <h3>Панель кнопок</h3>
-        <div class="row" data-key="gui.barOnLogin" data-type="bool"><span>Показывать при входе в игру<small>Скрыть и вернуть: кнопка панели в заголовке или /8 build bar</small></span></div>
-        <div class="row" data-key="gui.barOnTop" data-type="bool"><span>Поверх всех окон<small>Игра должна быть в режиме «Окно» или «Окно без рамки»</small></span></div>
-        <div class="row" data-key="gui.barNoFocus" data-type="bool"><span>Не забирать фокус у игры<small>После нажатия на кнопку игра остаётся активной. Панель перезапустится</small></span></div>
-        <div class="row" data-key="gui.hideUnfocused" data-type="bool"><span>Скрывать, когда игра неактивна<small>Панель исчезает, если вы переключились в другое окно или свернули игру, и появляется, когда вы вернётесь</small></span></div>
-        <div class="row" data-key="gui.barLocked" data-type="bool"><span>Закрепить панель<small>Панель нельзя сдвинуть мышью. Также: замок на панели или /8 build lock</small></span></div>
-        <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
-        <div class="row" data-key="gui.buttonBg" data-type="bool"><span>Фон кнопок<small>Плитка под иконкой. Без неё остаются только иконки</small></span></div>
-        <div class="row stack" data-key="gui.buttonBgColor" data-type="bgcolor"><span>Цвет фона кнопок<small>Радуга — цвет темы</small></span></div>
-        <div class="row" data-key="gui.buttonBgOpacity" data-type="range" data-min="0" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность фона кнопок</span></div>
-        <div class="row" data-key="gui.buttonBorder" data-type="bool"><span>Рамка кнопок</span></div>
-        <div class="row" data-key="gui.labels" data-type="bool"><span>Подписи под кнопками</span></div>
-        <div class="row" data-key="gui.transparentBg" data-type="bool"><span>Прозрачная панель<small>Над игрой видны только кнопки. Панель перезапустится</small></span></div>
-        <div class="row" data-key="gui.layout" data-type="seg" data-options="row:В строку|column:В столбец"><span>Расположение</span></div>
-        <div class="row" data-key="gui.opacity" data-type="range" data-min="30" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность</span></div>
-        <div class="row" data-key="gui.idleOpacity" data-type="range" data-min="15" data-max="100" data-step="5" data-unit="%"><span>Когда курсор не над панелью<small>Панель становится прозрачнее, пока вы играете</small></span></div>
+    <section class="page" data-page="bar">
+        <h2>Панель кнопок</h2>
+        <p class="page-desc">Где и когда видна панель с кнопками билдов. Она показывается только на персонаже, на экране выбора персонажа её нет.</p>
+        <div class="group">
+            <div class="row" data-key="gui.barOnLogin" data-type="bool"><span>Показывать при входе в игру<small>Скрыть и вернуть: кнопка панели в заголовке или /8 build bar</small></span></div>
+            <div class="row" data-key="gui.barOnTop" data-type="bool"><span>Поверх всех окон<small>Игра должна быть в режиме «Окно» или «Окно без рамки»</small></span></div>
+            <div class="row" data-key="gui.barNoFocus" data-type="bool"><span>Не забирать фокус у игры<small>После нажатия на кнопку игра остаётся активной. Панель перезапустится</small></span></div>
+            <div class="row" data-key="gui.hideUnfocused" data-type="bool"><span>Скрывать, когда игра неактивна<small>Панель исчезает, если вы переключились в другое окно или свернули игру, и появляется, когда вы вернётесь</small></span></div>
+            <div class="row" data-key="gui.barLocked" data-type="bool"><span>Закрепить панель<small>Панель нельзя сдвинуть мышью. Также: замок на панели или /8 build lock</small></span></div>
+        </div>
+        <div class="group">
+            <div class="row" data-key="gui.transparentBg" data-type="bool"><span>Прозрачная панель<small>Над игрой видны только кнопки. Панель перезапустится</small></span></div>
+            <div class="row" data-key="gui.opacity" data-type="range" data-min="30" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность</span></div>
+            <div class="row" data-key="gui.idleOpacity" data-type="range" data-min="15" data-max="100" data-step="5" data-unit="%"><span>Когда курсор не над панелью<small>Панель становится прозрачнее, пока вы играете</small></span></div>
+        </div>
     </section>
 
-    <section class="group">
-        <h3>Окно управления</h3>
-        <div class="row" data-key="gui.managerOnLogin" data-type="bool"><span>Открывать при входе в игру<small>Открыть вручную: ⚙ на панели или /8 build gui</small></span></div>
-        <div class="row" data-key="gui.managerOnTop" data-type="bool"><span>Поверх всех окон</span></div>
-        <div class="row" data-key="gui.zoom" data-type="range" data-min="70" data-max="150" data-step="5" data-unit="%"><span>Масштаб интерфейса<small>Для панели и окна управления</small></span></div>
-        <div class="row" data-key="gui.theme" data-type="theme"><span>Тема</span></div>
-        <div class="row" data-key="language" data-type="lang"><span>Язык<small>Language</small></span></div>
+    <section class="page" data-page="look">
+        <h2>Вид кнопок</h2>
+        <p class="page-desc">Изменения сразу видны в примере ниже и на панели.</p>
+        <div class="look-preview" id="look-preview"><main class="bar" id="look-bar"></main></div>
+        <div class="group">
+            <h3>Форма</h3>
+            <div class="row" data-key="gui.iconSize" data-type="range" data-min="32" data-max="96" data-step="4" data-unit=" px"><span>Размер кнопок</span></div>
+            <div class="row" data-key="gui.iconPadding" data-type="range" data-min="-1" data-max="30" data-step="1" data-unit=" px" data-auto="авто"><span>Отступ иконки от края<small>Внутренний отступ от иконки до рамки кнопки</small></span></div>
+            <div class="row" data-key="gui.radius" data-type="range" data-min="0" data-max="30" data-step="1" data-unit=" px"><span>Скругление углов</span></div>
+            <div class="row" data-key="gui.labels" data-type="bool"><span>Подписи под кнопками</span></div>
+            <div class="row" data-key="gui.layout" data-type="seg" data-options="row:В строку|column:В столбец"><span>Расположение</span></div>
+        </div>
+        <div class="group">
+            <h3>Обычная кнопка</h3>
+            <div class="row stack" data-key="gui.iconColor" data-type="color" data-palette="fg" data-auto="Цвет билда"><span>Цвет иконки<small>Радуга — цвет, выбранный в редакторе билда</small></span></div>
+            <div class="row" data-key="gui.buttonBg" data-type="bool"><span>Фон кнопок<small>Плитка под иконкой. Без неё остаются только иконки</small></span></div>
+            <div class="row stack" data-key="gui.buttonBgColor" data-type="color" data-palette="bg" data-auto="По теме"><span>Цвет фона<small>Радуга — цвет темы</small></span></div>
+            <div class="row" data-key="gui.buttonBgOpacity" data-type="range" data-min="0" data-max="100" data-step="5" data-unit="%"><span>Непрозрачность фона</span></div>
+            <div class="row" data-key="gui.buttonBorder" data-type="bool"><span>Рамка</span></div>
+            <div class="row stack" data-key="gui.borderColor" data-type="color" data-palette="fg" data-auto="По теме"><span>Цвет рамки<small>Радуга — цвет темы</small></span></div>
+            <div class="row" data-key="gui.borderWidth" data-type="range" data-min="1" data-max="4" data-step="1" data-unit=" px"><span>Толщина рамки</span></div>
+        </div>
+        <div class="group">
+            <h3>Включённый билд</h3>
+            <div class="row stack" data-key="gui.activeIconColor" data-type="color" data-palette="fg" data-auto="Как у обычной"><span>Цвет иконки<small>Радуга — как у обычной кнопки</small></span></div>
+            <div class="row stack" data-key="gui.activeBgColor" data-type="color" data-palette="bg" data-auto="Как у обычной"><span>Цвет фона<small>Радуга — как у обычной кнопки</small></span></div>
+            <div class="row stack" data-key="gui.activeBorderColor" data-type="color" data-palette="fg" data-auto="Золотой"><span>Цвет рамки и свечения<small>Радуга — золотой цвет темы. Без фона светится сама иконка</small></span></div>
+        </div>
+        <div class="row static reset-row"><button class="small" id="btn-reset-look">Вернуть вид по умолчанию</button></div>
     </section>
 
-    <section class="group">
-        <h3>Переключение</h3>
-        <div class="row" data-key="blockInCombat" data-type="bool"><span>Не переключать в бою</span></div>
-        <div class="row" data-key="crestsWhenBusy" data-type="select" data-options="single:По одному|skip:Не трогать символы|abort:Отменить переключение"><span>Если открыто окно взаимодействия<small>NPC, банк, торговля, крафт: сервер не меняет весь набор символов сразу</small></span></div>
-        <div class="row" data-key="delay" data-type="range" data-min="200" data-max="1500" data-step="50" data-unit=" мс"><span>Пауза между пакетами<small>Больше — надёжнее, меньше — быстрее</small></span></div>
-        <div class="row" data-key="summonOnLogin" data-type="bool"><span>Вызывать помощника при входе в игру<small>Помощник последнего включённого билда. Если другой мод (например, auto-pet) уже вызвал его, повторно не вызывается</small></span></div>
-        <div class="row" data-key="hotkeysEnabled" data-type="bool"><span>Горячие клавиши билдов<small>Назначаются в редакторе билда (✎)</small></span></div>
+    <section class="page" data-page="window">
+        <h2>Окно и язык</h2>
+        <p class="page-desc">Это окно, тема оформления и язык интерфейса.</p>
+        <div class="group">
+            <div class="row" data-key="gui.managerOnLogin" data-type="bool"><span>Открывать при входе в игру<small>Открыть вручную: ⚙ на панели или /8 build gui</small></span></div>
+            <div class="row" data-key="gui.managerOnTop" data-type="bool"><span>Поверх всех окон</span></div>
+            <div class="row" data-key="gui.zoom" data-type="range" data-min="70" data-max="150" data-step="5" data-unit="%"><span>Масштаб интерфейса<small>Для панели и окна управления</small></span></div>
+            <div class="row" data-key="gui.theme" data-type="theme"><span>Тема</span></div>
+            <div class="row" data-key="language" data-type="lang"><span>Язык<small>Language</small></span></div>
+        </div>
     </section>
 
-    <section class="group">
-        <h3>Уведомления</h3>
-        <div class="row" data-key="gui.toastSeconds" data-type="range" data-min="0" data-max="30" data-step="1" data-unit=" с" data-zero="не скрывать"><span>Показывать результат</span></div>
-        <div class="row" data-key="chatReports" data-type="bool"><span>Дублировать результат в чат</span></div>
-        <div class="row" data-key="gui.confirmDelete" data-type="bool"><span>Подтверждать удаление и перезапись</span></div>
+    <section class="page" data-page="switch">
+        <h2>Переключение</h2>
+        <p class="page-desc">Как мод переключает билды.</p>
+        <div class="group">
+            <div class="row" data-key="blockInCombat" data-type="bool"><span>Не переключать в бою</span></div>
+            <div class="row" data-key="crestsWhenBusy" data-type="select" data-options="single:По одному|skip:Не трогать символы|abort:Отменить переключение"><span>Если открыто окно взаимодействия<small>NPC, банк, торговля, крафт: сервер не меняет весь набор символов сразу</small></span></div>
+            <div class="row" data-key="delay" data-type="range" data-min="200" data-max="1500" data-step="50" data-unit=" мс"><span>Пауза между пакетами<small>Больше — надёжнее, меньше — быстрее</small></span></div>
+            <div class="row" data-key="summonOnLogin" data-type="bool"><span>Вызывать помощника при входе в игру<small>Помощник последнего включённого билда. Если другой мод (например, auto-pet) уже вызвал его, повторно не вызывается</small></span></div>
+            <div class="row" data-key="hotkeysEnabled" data-type="bool"><span>Горячие клавиши билдов<small>Назначаются в редакторе билда (✎)</small></span></div>
+        </div>
     </section>
 
-    <section class="group">
-        <h3>Данные</h3>
-        <div class="row static"><span>Выученные пакеты<small id="learned-info">—</small></span>
-            <button class="small danger" id="btn-forget">Забыть</button></div>
-        <div class="row static"><span>Положение, размер и прозрачность окон</span>
-            <button class="small" id="btn-reset-window">Сбросить</button></div>
+    <section class="page" data-page="notify">
+        <h2>Уведомления</h2>
+        <p class="page-desc">Сообщения о результате переключения.</p>
+        <div class="group">
+            <div class="row" data-key="gui.toastSeconds" data-type="range" data-min="0" data-max="30" data-step="1" data-unit=" с" data-zero="не скрывать"><span>Показывать результат</span></div>
+            <div class="row" data-key="chatReports" data-type="bool"><span>Дублировать результат в чат</span></div>
+            <div class="row" data-key="gui.confirmDelete" data-type="bool"><span>Подтверждать удаление и перезапись</span></div>
+        </div>
     </section>
 
-    <details class="help">
-        <summary>Символы и «Наборы» 1–5</summary>
-        <p>Номер «Набора» хранит только клиент игры. Сервер получает лишь список символов, поэтому новый список записывается в «Набор», выбранный сейчас.</p>
-        <p>Держите выбранным свободный «Набор» (например, 5): мод будет менять только его.</p>
-        <p>Если открыто окно взаимодействия (NPC, банк, торговля, крафт), сервер не меняет весь набор сразу. Что делать в этом случае, выбирается выше.</p>
-    </details>
-    <p class="version" id="version"></p>
+    <section class="page" data-page="data">
+        <h2>Данные и справка</h2>
+        <p class="page-desc">Что мод запомнил и как устроены наборы символов.</p>
+        <div class="group">
+            <div class="row static"><span>Выученные пакеты<small id="learned-info">—</small></span>
+                <button class="small danger" id="btn-forget">Забыть</button></div>
+            <div class="row static"><span>Положение, размер и прозрачность окон</span>
+                <button class="small" id="btn-reset-window">Сбросить</button></div>
+        </div>
+        <div class="group help">
+            <h3>Символы и «Наборы» 1–5</h3>
+            <p>Номер «Набора» хранит только клиент игры. Сервер получает лишь список символов, поэтому новый список записывается в «Набор», выбранный сейчас.</p>
+            <p>Держите выбранным свободный «Набор» (например, 5): мод будет менять только его.</p>
+            <p>Если открыто окно взаимодействия (NPC, банк, торговля, крафт), сервер не меняет весь набор сразу. Что делать в этом случае, выбирается в разделе «Переключение».</p>
+        </div>
+    </section>
 </main>
+</div>
+</div>
 
 <!-- ======================= Редактор билда ======================= -->
 <div class="sheet hidden" id="editor">
